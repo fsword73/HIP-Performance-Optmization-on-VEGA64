@@ -30,13 +30,13 @@ Contents
 
 [2.2.4  Increasing Threads In Parallel ：增加并行线程... 14](#_Toc15309012)
 
-[Total Threads = 1 * 256, FMA\_per\_cycle for Vega10 - 1.536GHz =     59. 14](#_Toc15309013)
+[Total Threads = 1 * 256, FMA_per_cycle for Vega10 - 1.536GHz =     59. 14](#_Toc15309013)
 
-[Total Threads = 1 * 512, FMA\_per\_cycle for Vega10 - 1.536GHz =     62. 14](#_Toc15309014)
+[Total Threads = 1 * 512, FMA_per_cycle for Vega10 - 1.536GHz =     62. 14](#_Toc15309014)
 
-[Total Threads = 1 * 768, FMA\_per\_cycle for Vega10 - 1.536GHz =     63. 14](#_Toc15309015)
+[Total Threads = 1 * 768, FMA_per_cycle for Vega10 - 1.536GHz =     63. 14](#_Toc15309015)
 
-[Total Threads = 1 * 1024, FMA\_per\_cycle for Vega10 - 1.536GHz =     63. 14](#_Toc15309016)
+[Total Threads = 1 * 1024, FMA_per_cycle for Vega10 - 1.536GHz =     63. 14](#_Toc15309016)
 
 [2.2.5 Enough Parallel Threads: 足够多线程充满64个计算单元... 15](#_Toc15309017)
 
@@ -126,11 +126,11 @@ HIP允许并行程序开发者无缝移植CUDA C++代码。HIP源代码（包括
 
 AMD GCN硬件约定64 Threads 一个 wave，一个block可以有1-16个wave。硬件生成Threads的速率将直接影响最终程序的效率， 例如GPU显存的读写速度。 为了测试Vega10的Threads 速率， 我们可以写一个最简单的设备空函数,
 
-\_\_global\_\_ void
+__global__ void
 
 null_kernel(hipLaunchParm lp,
 
-       float* \_\_restrict\_\_ a)
+       float* __restrict__ a)
 
 {
 
@@ -202,17 +202,17 @@ Threads速率是否与Block速率相关？这仍然是一个谜。因此测试�
 
 #define NUM  1
 
-#define THREADS\_PER\_BLOCK_X  1024
+#define THREADS_PER_BLOCK_X  1024
 
-#define THREADS\_PER\_BLOCK_Y  1
+#define THREADS_PER_BLOCK_Y  1
 
-#define THREADS\_PER\_BLOCK_Z  1
+#define THREADS_PER_BLOCK_Z  1
 
-\_\_global\_\_ void
+__global__ void
 
 null_kernel(hipLaunchParm lp,
 
-       float* \_\_restrict\_\_ a)
+       float* __restrict__ a)
 
 {
 
@@ -258,7 +258,7 @@ int main() {
 
                   dim3(1, 1),
 
-                  dim3(THREADS\_PER\_BLOCK\_X, THREADS\_PER\_BLOCK\_Y, THREADS\_PER\_BLOCK_Z),
+                  dim3(THREADS_PER_BLOCK_X, THREADS_PER_BLOCK_Y, THREADS_PER_BLOCK_Z),
 
                      0, 0,
 
@@ -268,9 +268,9 @@ int main() {
 
   hipLaunchKernel(null_kernel,
 
-                               dim3(TOTAL\_THREADS/THREADS\_PER\_BLOCK\_X, 1),
+                               dim3(TOTAL_THREADS/THREADS_PER_BLOCK_X, 1),
 
-                               dim3(THREADS\_PER\_BLOCK\_X, THREADS\_PER\_BLOCK\_Y, THREADS\_PER\_BLOCK_Z),     
+                               dim3(THREADS_PER_BLOCK_X, THREADS_PER_BLOCK_Y, THREADS_PER_BLOCK_Z),     
 
                      0, 0,
 
@@ -284,7 +284,7 @@ int main() {
 
   printf("kernel_time (hipEventElapsedTime) =%6.3fms\\n", eventMs);
 
-  printf("Threads\_per\_cycle for Vega10 - 1.536GHz = % 3d\\n", int(TOTAL_THREADS / eventMs / 1.536 / 1e6));
+  printf("Threads_per_cycle for Vega10 - 1.536GHz = % 3d\\n", int(TOTAL_THREADS / eventMs / 1.536 / 1e6));
 
   HIP_ASSERT(hipFree(deviceA));
 
@@ -312,7 +312,7 @@ hip Device prop succeeded
 
 kernel_time (hipEventElapsedTime) =10.890ms
 
-Threads\_per\_cycle for Vega10 - 1.536GHz =  64
+Threads_per_cycle for Vega10 - 1.536GHz =  64
 
 结果说明Mi25获得64 threads/Cycle的极限性能。
 
@@ -332,47 +332,47 @@ hip Device prop succeeded
 
 kernel_time (hipEventElapsedTime) =2789.162ms
 
-threads\_per\_block = 1,Threads\_per\_cycle for Vega10 - 1.536GHz =   0
+threads_per_block = 1,Threads_per_cycle for Vega10 - 1.536GHz =   0
 
 kernel_time (hipEventElapsedTime) =1395.156ms
 
-threads\_per\_block = 2,Threads\_per\_cycle for Vega10 - 1.536GHz =   1
+threads_per_block = 2,Threads_per_cycle for Vega10 - 1.536GHz =   1
 
 kernel_time (hipEventElapsedTime) =697.689ms
 
-threads\_per\_block = 4,Threads\_per\_cycle for Vega10 - 1.536GHz =   1
+threads_per_block = 4,Threads_per_cycle for Vega10 - 1.536GHz =   1
 
 kernel_time (hipEventElapsedTime) =348.875ms
 
-threads\_per\_block = 8,Threads\_per\_cycle for Vega10 - 1.536GHz =   2
+threads_per_block = 8,Threads_per_cycle for Vega10 - 1.536GHz =   2
 
 kernel_time (hipEventElapsedTime) =174.456ms
 
-threads\_per\_block = 16,Threads\_per\_cycle for Vega10 - 1.536GHz =   4
+threads_per_block = 16,Threads_per_cycle for Vega10 - 1.536GHz =   4
 
 kernel_time (hipEventElapsedTime) =87.238ms
 
-threads\_per\_block = 32,Threads\_per\_cycle for Vega10 - 1.536GHz =   8
+threads_per_block = 32,Threads_per_cycle for Vega10 - 1.536GHz =   8
 
 kernel_time (hipEventElapsedTime) =43.629ms
 
-threads\_per\_block = 64,Threads\_per\_cycle for Vega10 - 1.536GHz =  16
+threads_per_block = 64,Threads_per_cycle for Vega10 - 1.536GHz =  16
 
 kernel_time (hipEventElapsedTime) =21.828ms
 
-threads\_per\_block = 128,Threads\_per\_cycle for Vega10 - 1.536GHz =  32
+threads_per_block = 128,Threads_per_cycle for Vega10 - 1.536GHz =  32
 
 kernel_time (hipEventElapsedTime) =10.929ms
 
-threads\_per\_block = 256,Threads\_per\_cycle for Vega10 - 1.536GHz =  64
+threads_per_block = 256,Threads_per_cycle for Vega10 - 1.536GHz =  64
 
 kernel_time (hipEventElapsedTime) =10.914ms
 
-threads\_per\_block = 512,Threads\_per\_cycle for Vega10 - 1.536GHz =  64
+threads_per_block = 512,Threads_per_cycle for Vega10 - 1.536GHz =  64
 
 kernel_time (hipEventElapsedTime) =10.909ms
 
-threads\_per\_block = 1024,Threads\_per\_cycle for Vega10 - 1.536GHz =  64
+threads_per_block = 1024,Threads_per_cycle for Vega10 - 1.536GHz =  64
 
 仔细观察，仅仅当 BlockDim = 256， 512, 1024时， 线程产生速度达到峰值。这个信息有什么含义， 或者对GPU程序优化有何指导意义？
 
@@ -392,69 +392,69 @@ threads\_per\_block = 1024,Threads\_per\_cycle for Vega10 - 1.536GHz =  64
 
 编译执行eaxaple-1c.cpp，得到如下结果。
 
-threads\_per\_block = \[1,1,1\],Threads\_per\_cycle for Vega10 - 1.536GHz =   0
+threads_per_block = \[1,1,1\],Threads_per_cycle for Vega10 - 1.536GHz =   0
 
-threads\_per\_block = \[2,2,1\],Threads\_per\_cycle for Vega10 - 1.536GHz =   1
+threads_per_block = \[2,2,1\],Threads_per_cycle for Vega10 - 1.536GHz =   1
 
-threads\_per\_block = \[3,3,1\],Threads\_per\_cycle for Vega10 - 1.536GHz =   2
+threads_per_block = \[3,3,1\],Threads_per_cycle for Vega10 - 1.536GHz =   2
 
-threads\_per\_block = \[4,4,1\],Threads\_per\_cycle for Vega10 - 1.536GHz =   4
+threads_per_block = \[4,4,1\],Threads_per_cycle for Vega10 - 1.536GHz =   4
 
-threads\_per\_block = \[5,5,1\],Threads\_per\_cycle for Vega10 - 1.536GHz =   6
+threads_per_block = \[5,5,1\],Threads_per_cycle for Vega10 - 1.536GHz =   6
 
-threads\_per\_block = \[6,6,1\],Threads\_per\_cycle for Vega10 - 1.536GHz =   9
+threads_per_block = \[6,6,1\],Threads_per_cycle for Vega10 - 1.536GHz =   9
 
-threads\_per\_block = \[7,7,1\],Threads\_per\_cycle for Vega10 - 1.536GHz =  12
+threads_per_block = \[7,7,1\],Threads_per_cycle for Vega10 - 1.536GHz =  12
 
-threads\_per\_block = \[8,8,1\],Threads\_per\_cycle for Vega10 - 1.536GHz =  16
+threads_per_block = \[8,8,1\],Threads_per_cycle for Vega10 - 1.536GHz =  16
 
-threads\_per\_block = \[9,9,1\],Threads\_per\_cycle for Vega10 - 1.536GHz =  20
+threads_per_block = \[9,9,1\],Threads_per_cycle for Vega10 - 1.536GHz =  20
 
-threads\_per\_block = \[10,10,1\],Threads\_per\_cycle for Vega10 - 1.536GHz =  25
+threads_per_block = \[10,10,1\],Threads_per_cycle for Vega10 - 1.536GHz =  25
 
-threads\_per\_block = \[11,11,1\],Threads\_per\_cycle for Vega10 - 1.536GHz =  30
+threads_per_block = \[11,11,1\],Threads_per_cycle for Vega10 - 1.536GHz =  30
 
-threads\_per\_block = \[12,12,1\],Threads\_per\_cycle for Vega10 - 1.536GHz =  36
+threads_per_block = \[12,12,1\],Threads_per_cycle for Vega10 - 1.536GHz =  36
 
-threads\_per\_block = \[13,13,1\],Threads\_per\_cycle for Vega10 - 1.536GHz =  42
+threads_per_block = \[13,13,1\],Threads_per_cycle for Vega10 - 1.536GHz =  42
 
-threads\_per\_block = \[14,14,1\],Threads\_per\_cycle for Vega10 - 1.536GHz =  49
+threads_per_block = \[14,14,1\],Threads_per_cycle for Vega10 - 1.536GHz =  49
 
-threads\_per\_block = \[15,15,1\],Threads\_per\_cycle for Vega10 - 1.536GHz =  56
+threads_per_block = \[15,15,1\],Threads_per_cycle for Vega10 - 1.536GHz =  56
 
-threads\_per\_block = \[16,16,1\],Threads\_per\_cycle for Vega10 - 1.536GHz =  64
+threads_per_block = \[16,16,1\],Threads_per_cycle for Vega10 - 1.536GHz =  64
 
-threads\_per\_block = \[17,17,1\],Threads\_per\_cycle for Vega10 - 1.536GHz =  58
+threads_per_block = \[17,17,1\],Threads_per_cycle for Vega10 - 1.536GHz =  58
 
-threads\_per\_block = \[18,18,1\],Threads\_per\_cycle for Vega10 - 1.536GHz =  54
+threads_per_block = \[18,18,1\],Threads_per_cycle for Vega10 - 1.536GHz =  54
 
-threads\_per\_block = \[19,19,1\],Threads\_per\_cycle for Vega10 - 1.536GHz =  60
+threads_per_block = \[19,19,1\],Threads_per_cycle for Vega10 - 1.536GHz =  60
 
-threads\_per\_block = \[20,20,1\],Threads\_per\_cycle for Vega10 - 1.536GHz =  57
+threads_per_block = \[20,20,1\],Threads_per_cycle for Vega10 - 1.536GHz =  57
 
-threads\_per\_block = \[21,21,1\],Threads\_per\_cycle for Vega10 - 1.536GHz =  63
+threads_per_block = \[21,21,1\],Threads_per_cycle for Vega10 - 1.536GHz =  63
 
-threads\_per\_block = \[22,22,1\],Threads\_per\_cycle for Vega10 - 1.536GHz =  60
+threads_per_block = \[22,22,1\],Threads_per_cycle for Vega10 - 1.536GHz =  60
 
-threads\_per\_block = \[23,23,1\],Threads\_per\_cycle for Vega10 - 1.536GHz =  59
+threads_per_block = \[23,23,1\],Threads_per_cycle for Vega10 - 1.536GHz =  59
 
-threads\_per\_block = \[24,24,1\],Threads\_per\_cycle for Vega10 - 1.536GHz =  64
+threads_per_block = \[24,24,1\],Threads_per_cycle for Vega10 - 1.536GHz =  64
 
-threads\_per\_block = \[25,25,1\],Threads\_per\_cycle for Vega10 - 1.536GHz =  62
+threads_per_block = \[25,25,1\],Threads_per_cycle for Vega10 - 1.536GHz =  62
 
-threads\_per\_block = \[26,26,1\],Threads\_per\_cycle for Vega10 - 1.536GHz =  61
+threads_per_block = \[26,26,1\],Threads_per_cycle for Vega10 - 1.536GHz =  61
 
-threads\_per\_block = \[27,27,1\],Threads\_per\_cycle for Vega10 - 1.536GHz =  61
+threads_per_block = \[27,27,1\],Threads_per_cycle for Vega10 - 1.536GHz =  61
 
-threads\_per\_block = \[28,28,1\],Threads\_per\_cycle for Vega10 - 1.536GHz =  60
+threads_per_block = \[28,28,1\],Threads_per_cycle for Vega10 - 1.536GHz =  60
 
-threads\_per\_block = \[29,29,1\],Threads\_per\_cycle for Vega10 - 1.536GHz =  60
+threads_per_block = \[29,29,1\],Threads_per_cycle for Vega10 - 1.536GHz =  60
 
-threads\_per\_block = \[30,30,1\],Threads\_per\_cycle for Vega10 - 1.536GHz =  60
+threads_per_block = \[30,30,1\],Threads_per_cycle for Vega10 - 1.536GHz =  60
 
-threads\_per\_block = \[31,31,1\],Threads\_per\_cycle for Vega10 - 1.536GHz =  60
+threads_per_block = \[31,31,1\],Threads_per_cycle for Vega10 - 1.536GHz =  60
 
-threads\_per\_block = \[32,32,1\],Threads\_per\_cycle for Vega10 - 1.536GHz =  64
+threads_per_block = \[32,32,1\],Threads_per_cycle for Vega10 - 1.536GHz =  64
 
 结果清晰第显示，只有当BlockDim的总线程数量是256的倍数，Dim3(16,16,1), Dim3(24,24,1), Dim3(32,32,1)，才能获得极限线程生成速率。Dim3(32,16,1)读者有兴趣可以自己测试。
 
@@ -466,25 +466,25 @@ threads\_per\_block = \[32,32,1\],Threads\_per\_cycle for Vega10 - 1.536GHz =  6
 
 编译执行example-1d.cpp。得到如下结果。
 
-threads\_per\_block = \[1,1,1\],Threads\_per\_cycle for Vega10 - 1.536GHz =   0
+threads_per_block = \[1,1,1\],Threads_per_cycle for Vega10 - 1.536GHz =   0
 
-threads\_per\_block = \[2,2,2\],Threads\_per\_cycle for Vega10 - 1.536GHz =   2
+threads_per_block = \[2,2,2\],Threads_per_cycle for Vega10 - 1.536GHz =   2
 
-threads\_per\_block = \[3,3,3\],Threads\_per\_cycle for Vega10 - 1.536GHz =   7
+threads_per_block = \[3,3,3\],Threads_per_cycle for Vega10 - 1.536GHz =   7
 
-threads\_per\_block = \[4,4,4\],Threads\_per\_cycle for Vega10 - 1.536GHz =  16
+threads_per_block = \[4,4,4\],Threads_per_cycle for Vega10 - 1.536GHz =  16
 
-threads\_per\_block = \[5,5,5\],Threads\_per\_cycle for Vega10 - 1.536GHz =  31
+threads_per_block = \[5,5,5\],Threads_per_cycle for Vega10 - 1.536GHz =  31
 
-threads\_per\_block = \[6,6,6\],Threads\_per\_cycle for Vega10 - 1.536GHz =  54
+threads_per_block = \[6,6,6\],Threads_per_cycle for Vega10 - 1.536GHz =  54
 
-threads\_per\_block = \[7,7,7\],Threads\_per\_cycle for Vega10 - 1.536GHz =  57
+threads_per_block = \[7,7,7\],Threads_per_cycle for Vega10 - 1.536GHz =  57
 
-threads\_per\_block = \[8,8,8\],Threads\_per\_cycle for Vega10 - 1.536GHz =  64
+threads_per_block = \[8,8,8\],Threads_per_cycle for Vega10 - 1.536GHz =  64
 
-threads\_per\_block = \[9,9,9\],Threads\_per\_cycle for Vega10 - 1.536GHz =  61
+threads_per_block = \[9,9,9\],Threads_per_cycle for Vega10 - 1.536GHz =  61
 
-threads\_per\_block = \[10,10,10\],Threads\_per\_cycle for Vega10 - 1.536GHz =  62
+threads_per_block = \[10,10,10\],Threads_per_cycle for Vega10 - 1.536GHz =  62
 
 这个实例的结论和前两个测试相同， 只用线程数为256的整倍数才能获得最佳性能。
 
@@ -497,19 +497,19 @@ Vega64有64个计算单元（compute unit），每个计算单元有64个乘加�
 
  256 threads执行100万次FMA，只有64个乘加器，那么每个乘加器需要执行400万条指令，那么执行时间最短时间为 4/1.536 = 2.6毫秒。编译器通常带有许多有优化技术，它会优化掉对最终结果无贡献的大量计算，因此程序必须迷惑编译器，假装程序一定会产生输出。
 
-#define FMA\_PER\_THREADS       1000000
+#define FMA_PER_THREADS       1000000
 
-\_\_global\_\_ void
+__global__ void
 
 test_kernel(hipLaunchParm lp,
 
-       float* \_\_restrict\_\_ a)
+       float* __restrict__ a)
 
 {
 
-       int x = hipBlockDim\_x * hipBlockIdx\_x + hipThreadIdx_x;
+       int x = hipBlockDim_x * hipBlockIdx_x + hipThreadIdx_x;
 
-       int y = hipBlockDim\_y * hipBlockIdx\_y + hipThreadIdx_y;      
+       int y = hipBlockDim_y * hipBlockIdx_y + hipThreadIdx_y;      
 
        float t0 = (float)x / (float) (x + 1);
 
@@ -517,7 +517,7 @@ test_kernel(hipLaunchParm lp,
 
        float sum=0.0;
 
-       for(int i =0; i < FMA\_PER\_THREADS;i++)
+       for(int i =0; i < FMA_PER_THREADS;i++)
 
        {
 
@@ -551,103 +551,103 @@ Generated GCN ISA for gfx900 at: ./example-2a.exe-gfx900.isa
 
 000000000000124c BB0_1:
 
-       v\_mad\_f32 v3, v1, v3, v2                                   // 00000000124C: D1C10003 040A0701
+       v_mad_f32 v3, v1, v3, v2                                   // 00000000124C: D1C10003 040A0701
 
-       v\_mad\_f32 v3, v1, v3, v2                                   // 000000001254: D1C10003 040A0701
+       v_mad_f32 v3, v1, v3, v2                                   // 000000001254: D1C10003 040A0701
 
-       v\_mad\_f32 v3, v1, v3, v2                                   // 00000000125C: D1C10003 040A0701
+       v_mad_f32 v3, v1, v3, v2                                   // 00000000125C: D1C10003 040A0701
 
-       v\_mad\_f32 v3, v1, v3, v2                                   // 000000001264: D1C10003 040A0701
+       v_mad_f32 v3, v1, v3, v2                                   // 000000001264: D1C10003 040A0701
 
-       v\_mad\_f32 v3, v1, v3, v2                                   // 00000000126C: D1C10003 040A0701
+       v_mad_f32 v3, v1, v3, v2                                   // 00000000126C: D1C10003 040A0701
 
-       v\_mad\_f32 v3, v1, v3, v2                                   // 000000001274: D1C10003 040A0701
+       v_mad_f32 v3, v1, v3, v2                                   // 000000001274: D1C10003 040A0701
 
-       v\_mad\_f32 v3, v1, v3, v2                                   // 00000000127C: D1C10003 040A0701
+       v_mad_f32 v3, v1, v3, v2                                   // 00000000127C: D1C10003 040A0701
 
-       v\_mad\_f32 v3, v1, v3, v2                                   // 000000001284: D1C10003 040A0701
+       v_mad_f32 v3, v1, v3, v2                                   // 000000001284: D1C10003 040A0701
 
-       v\_mad\_f32 v3, v1, v3, v2                                   // 00000000128C: D1C10003 040A0701
+       v_mad_f32 v3, v1, v3, v2                                   // 00000000128C: D1C10003 040A0701
 
-       v\_mad\_f32 v3, v1, v3, v2                                   // 000000001294: D1C10003 040A0701
+       v_mad_f32 v3, v1, v3, v2                                   // 000000001294: D1C10003 040A0701
 
-       v\_mad\_f32 v3, v1, v3, v2                                   // 00000000129C: D1C10003 040A0701
+       v_mad_f32 v3, v1, v3, v2                                   // 00000000129C: D1C10003 040A0701
 
-       v\_mad\_f32 v3, v1, v3, v2                                   // 0000000012A4: D1C10003 040A0701
+       v_mad_f32 v3, v1, v3, v2                                   // 0000000012A4: D1C10003 040A0701
 
-       v\_mad\_f32 v3, v1, v3, v2                                   // 0000000012AC: D1C10003 040A0701
+       v_mad_f32 v3, v1, v3, v2                                   // 0000000012AC: D1C10003 040A0701
 
-       v\_mad\_f32 v3, v1, v3, v2                                   // 0000000012B4: D1C10003 040A0701
+       v_mad_f32 v3, v1, v3, v2                                   // 0000000012B4: D1C10003 040A0701
 
-       v\_mad\_f32 v3, v1, v3, v2                                   // 0000000012BC: D1C10003 040A0701
+       v_mad_f32 v3, v1, v3, v2                                   // 0000000012BC: D1C10003 040A0701
 
-       v\_mad\_f32 v3, v1, v3, v2                                   // 0000000012C4: D1C10003 040A0701
+       v_mad_f32 v3, v1, v3, v2                                   // 0000000012C4: D1C10003 040A0701
 
-       v\_mad\_f32 v3, v1, v3, v2                                   // 0000000012CC: D1C10003 040A0701
+       v_mad_f32 v3, v1, v3, v2                                   // 0000000012CC: D1C10003 040A0701
 
-       v\_mad\_f32 v3, v1, v3, v2                                   // 0000000012D4: D1C10003 040A0701
+       v_mad_f32 v3, v1, v3, v2                                   // 0000000012D4: D1C10003 040A0701
 
-       v\_mad\_f32 v3, v1, v3, v2                                   // 0000000012DC: D1C10003 040A0701
+       v_mad_f32 v3, v1, v3, v2                                   // 0000000012DC: D1C10003 040A0701
 
-       v\_mad\_f32 v3, v1, v3, v2                                   // 0000000012E4: D1C10003 040A0701
+       v_mad_f32 v3, v1, v3, v2                                   // 0000000012E4: D1C10003 040A0701
 
-       v\_mad\_f32 v3, v1, v3, v2                                   // 0000000012EC: D1C10003 040A0701
+       v_mad_f32 v3, v1, v3, v2                                   // 0000000012EC: D1C10003 040A0701
 
-       v\_mad\_f32 v3, v1, v3, v2                                   // 0000000012F4: D1C10003 040A0701
+       v_mad_f32 v3, v1, v3, v2                                   // 0000000012F4: D1C10003 040A0701
 
-       v\_mad\_f32 v3, v1, v3, v2                                   // 0000000012FC: D1C10003 040A0701
+       v_mad_f32 v3, v1, v3, v2                                   // 0000000012FC: D1C10003 040A0701
 
-       v\_mad\_f32 v3, v1, v3, v2                                   // 000000001304: D1C10003 040A0701
+       v_mad_f32 v3, v1, v3, v2                                   // 000000001304: D1C10003 040A0701
 
-       v\_mad\_f32 v3, v1, v3, v2                                   // 00000000130C: D1C10003 040A0701
+       v_mad_f32 v3, v1, v3, v2                                   // 00000000130C: D1C10003 040A0701
 
-       v\_mad\_f32 v3, v1, v3, v2                                   // 000000001314: D1C10003 040A0701
+       v_mad_f32 v3, v1, v3, v2                                   // 000000001314: D1C10003 040A0701
 
-       v\_mad\_f32 v3, v1, v3, v2                                   // 00000000131C: D1C10003 040A0701
+       v_mad_f32 v3, v1, v3, v2                                   // 00000000131C: D1C10003 040A0701
 
-       v\_mad\_f32 v3, v1, v3, v2                                   // 000000001324: D1C10003 040A0701
+       v_mad_f32 v3, v1, v3, v2                                   // 000000001324: D1C10003 040A0701
 
-       v\_mad\_f32 v3, v1, v3, v2                                   // 00000000132C: D1C10003 040A0701
+       v_mad_f32 v3, v1, v3, v2                                   // 00000000132C: D1C10003 040A0701
 
-       v\_mad\_f32 v3, v1, v3, v2                                   // 000000001334: D1C10003 040A0701
+       v_mad_f32 v3, v1, v3, v2                                   // 000000001334: D1C10003 040A0701
 
-       v\_mad\_f32 v3, v1, v3, v2                                   // 00000000133C: D1C10003 040A0701
+       v_mad_f32 v3, v1, v3, v2                                   // 00000000133C: D1C10003 040A0701
 
-       v\_mad\_f32 v3, v1, v3, v2                                   // 000000001344: D1C10003 040A0701
+       v_mad_f32 v3, v1, v3, v2                                   // 000000001344: D1C10003 040A0701
 
-       v\_mad\_f32 v3, v1, v3, v2                                   // 00000000134C: D1C10003 040A0701
+       v_mad_f32 v3, v1, v3, v2                                   // 00000000134C: D1C10003 040A0701
 
-       v\_mad\_f32 v3, v1, v3, v2                                   // 000000001354: D1C10003 040A0701
+       v_mad_f32 v3, v1, v3, v2                                   // 000000001354: D1C10003 040A0701
 
-       v\_mad\_f32 v3, v1, v3, v2                                   // 00000000135C: D1C10003 040A0701
+       v_mad_f32 v3, v1, v3, v2                                   // 00000000135C: D1C10003 040A0701
 
-       v\_mad\_f32 v3, v1, v3, v2                                   // 000000001364: D1C10003 040A0701
+       v_mad_f32 v3, v1, v3, v2                                   // 000000001364: D1C10003 040A0701
 
-       v\_mad\_f32 v3, v1, v3, v2                                   // 00000000136C: D1C10003 040A0701
+       v_mad_f32 v3, v1, v3, v2                                   // 00000000136C: D1C10003 040A0701
 
-       v\_mad\_f32 v3, v1, v3, v2                                   // 000000001374: D1C10003 040A0701
+       v_mad_f32 v3, v1, v3, v2                                   // 000000001374: D1C10003 040A0701
 
-       v\_mad\_f32 v3, v1, v3, v2                                   // 00000000137C: D1C10003 040A0701
+       v_mad_f32 v3, v1, v3, v2                                   // 00000000137C: D1C10003 040A0701
 
-       s\_sub\_i32 s2, s2, 40                                       // 000000001384: 8182A802
+       s_sub_i32 s2, s2, 40                                       // 000000001384: 8182A802
 
-       s\_cmp\_lg_u32 s2, 0                                         // 000000001388: BF078002
+       s_cmp_lg_u32 s2, 0                                         // 000000001388: BF078002
 
-       v\_mad\_f32 v3, v1, v3, v2                                   // 00000000138C: D1C10003 040A0701
+       v_mad_f32 v3, v1, v3, v2                                   // 00000000138C: D1C10003 040A0701
 
-       s\_cbranch\_scc1 BB0_1                                       // 000000001394: BF85FFAD
+       s_cbranch_scc1 BB0_1                                       // 000000001394: BF85FFAD
 
 该段GCN 汇编代码是对应test_kernel的100万次循环，包含：
 
-*   40个v\_mad\_f32指令，编译器做了默认40次循环展开，
-*   两条SALU, s\_sub\_i32, s\_cmp\_lg_u32
-*   一条跳转指令 s\_cbranch\_scc1
+*   40个v_mad_f32指令，编译器做了默认40次循环展开，
+*   两条SALU, s_sub_i32, s_cmp_lg_u32
+*   一条跳转指令 s_cbranch_scc1
 
 那么对应FMA指令的有效率为， 40/43 = 93%，乘以每个计算单元的64个乘加器，理论上可以获得59个FMA /Cycle.
 
 现在执行example-2a.exe获得测试性能。
 
-Total Threads = 1 * 256, FMA\_per\_cycle for Vega10 - 1.536GHz =     44
+Total Threads = 1 * 256, FMA_per_cycle for Vega10 - 1.536GHz =     44
 
 实际上测试程序使用256 threads仅仅获得了44个FMA/Cycle，远远低于理论预期。那么这里存在一些我们还没发现的性能陷阱。可以有两个方向进行测试，例如采用两层循环，控制循环展开的指令数目， 增加threads数目以提高并行性，并减少因指令缓存(instruction Cache)读取失败的机率。
 
@@ -657,7 +657,7 @@ Total Threads = 1 * 256, FMA\_per\_cycle for Vega10 - 1.536GHz =     44
 
 #pragma unroll 100
 
-       for(int i =0; i < FMA\_PER\_THREADS;i++)
+       for(int i =0; i < FMA_PER_THREADS;i++)
 
        {
 
@@ -667,12 +667,12 @@ Total Threads = 1 * 256, FMA\_per\_cycle for Vega10 - 1.536GHz =     44
 
 编译example-2b.cpp并执行获得如下结果。
 
-Total Threads = 1 * 256, FMA\_per\_cycle for Vega10 - 1.536GHz =     48
+Total Threads = 1 * 256, FMA_per_cycle for Vega10 - 1.536GHz =     48
 
 成绩从44 FMA/Cycle/CU 提高到了48 FMA/Cycle/CU。继续使用extractkernels来检查GCN汇编代码，我们发现主体循环代码包含：
 
-*   100个v\_mad\_f32指令，完全匹配指定的循环展开次数100次
-*   两条SALU, s\_addk\_i32, s\_cmp\_lg_u32
+*   100个v_mad_f32指令，完全匹配指定的循环展开次数100次
+*   两条SALU, s_addk_i32, s_cmp_lg_u32
 *   一条跳转指令
 
 此时example-2b能获得理论性能为100/103 * 64 = 62 FMA/cycle/CU， example-2a高3 FMA/Cycle/CU，实际获得4 FMA/Cycle/CU的提升。实际效果良好。但是距离我们期待的 64 FMA/Cycle/CU仍然有比较大的差距。
@@ -681,7 +681,7 @@ Total Threads = 1 * 256, FMA\_per\_cycle for Vega10 - 1.536GHz =     48
 
   Example-2c将尝试多层循环，内存循环体使用100次循环，外层循环体10000次循环。
 
-       for(int i =0; i < FMA\_PER\_THREADS/100;i++)
+       for(int i =0; i < FMA_PER_THREADS/100;i++)
 
        {
 
@@ -693,14 +693,14 @@ Total Threads = 1 * 256, FMA\_per\_cycle for Vega10 - 1.536GHz =     48
 
 编译执行example-2c.cpp得到如下输出结果：
 
-Total Threads = 1 * 256, FMA\_per\_cycle for Vega10 - 1.536GHz =     59 
+Total Threads = 1 * 256, FMA_per_cycle for Vega10 - 1.536GHz =     59 
 
 性能得到了很大提升，以惯例继续使用extractkernel查看主要循环体：
 
-*   100个v\_mad\_f32指令，完全匹配内层循环体100次
-*   两条SALU, s\_add\_i32, s\_cmp\_lg_u32
-    *   s\_add\_i32 s2, s2, -1
-*   一条跳转指令s\_cbranch\_scc1
+*   100个v_mad_f32指令，完全匹配内层循环体100次
+*   两条SALU, s_add_i32, s_cmp_lg_u32
+    *   s_add_i32 s2, s2, -1
+*   一条跳转指令s_cbranch_scc1
 
       这个结果很难解释为何example-3c.cpp 比example-3b.cpp获得大幅度的性能提升。仔细检查example-2b和example-2c的GCN汇编代码，另外一个微小区别是整个Kernel代码段的长度差了4个字节。一个可能测猜测是Instruction Cache有特定的尺寸，对于性能影响很大，如果整个循环体代码长度是Instruction Cache的完整倍数，那么将获得最优性能，否则最终的性能为实际指令编码的字节数与对应Cacheline之比。例如Instruction Cache为8 个DWORD，那么整个循环体最多损失14 DWORDs，103条指令编码总共203个DWORDs, 最少26条Cachelines，最多27条Cachelines，如果多一个不对齐的Cahceline, 那么最多损失8%的性能，或者5-6条FMA/Cycle/CU。如果Instruction Cache Line有两条不对齐的Cachelines，最大性能差距会达到11条 FMA/Cycle/CU。
 
@@ -710,13 +710,13 @@ Total Threads = 1 * 256, FMA\_per\_cycle for Vega10 - 1.536GHz =     59
 
 编译并执行Example-2d.cpp，获得如下结果。
 
-### Total Threads = 1 * 256, FMA\_per\_cycle for Vega10 - 1.536GHz =     59
+### Total Threads = 1 * 256, FMA_per_cycle for Vega10 - 1.536GHz =     59
 
-### Total Threads = 1 * 512, FMA\_per\_cycle for Vega10 - 1.536GHz =     62
+### Total Threads = 1 * 512, FMA_per_cycle for Vega10 - 1.536GHz =     62
 
-### Total Threads = 1 * 768, FMA\_per\_cycle for Vega10 - 1.536GHz =     63
+### Total Threads = 1 * 768, FMA_per_cycle for Vega10 - 1.536GHz =     63
 
-### Total Threads = 1 * 1024, FMA\_per\_cycle for Vega10 - 1.536GHz =     63
+### Total Threads = 1 * 1024, FMA_per_cycle for Vega10 - 1.536GHz =     63
 
  结果显示，当我们增加1个计算单元的并行线程数，能够有效增加SIMD的效率。
 
@@ -738,7 +738,7 @@ hipEventRecord(start, NULL);
 
                                  dim3(j, 1, 1),
 
-                                 dim3(THREADS\_PER\_BLOCK_X * i, 1, 1),
+                                 dim3(THREADS_PER_BLOCK_X * i, 1, 1),
 
                                  0, 0,
 
@@ -752,11 +752,11 @@ hipEventRecord(start, NULL);
 
           printf("kernel_time (hipEventElapsedTime) =%6.3fms\\n", eventMs);
 
-          double FMA\_per\_cycle = double(THREADS\_PER\_BLOCK\_X) * i \*j \* double(FMA\_PER_THREDS) / eventMs / (1.536 * 1e6) + 0.5;
+          double FMA_per_cycle = double(THREADS_PER_BLOCK_X) * i \*j \* double(FMA_PER_THREDS) / eventMs / (1.536 * 1e6) + 0.5;
 
-            printf("Total Threads = %d * %d, FMA\_per\_cycle for Vega10 - 1.536GHz = %6d\\n", j, THREADS\_PER\_BLOCK_X * i,    
+            printf("Total Threads = %d * %d, FMA_per_cycle for Vega10 - 1.536GHz = %6d\\n", j, THREADS_PER_BLOCK_X * i,    
 
-                     (int)FMA\_per\_cycle);
+                     (int)FMA_per_cycle);
 
         }
 
@@ -766,37 +766,37 @@ hipEventRecord(start, NULL);
 
 kernel_time (hipEventElapsedTime) =10.630ms
 
-Total Threads = 1 * 1024, FMA\_per\_cycle for Vega10 - 1.536GHz =     63
+Total Threads = 1 * 1024, FMA_per_cycle for Vega10 - 1.536GHz =     63
 
 kernel_time (hipEventElapsedTime) =10.639ms
 
-Total Threads = 2 * 1024, FMA\_per\_cycle for Vega10 - 1.536GHz =    125
+Total Threads = 2 * 1024, FMA_per_cycle for Vega10 - 1.536GHz =    125
 
 kernel_time (hipEventElapsedTime) =10.641ms
 
-Total Threads = 3 * 1024, FMA\_per\_cycle for Vega10 - 1.536GHz =    188
+Total Threads = 3 * 1024, FMA_per_cycle for Vega10 - 1.536GHz =    188
 
-Total Threads = 8 * 1024, FMA\_per\_cycle for Vega10 - 1.536GHz =    499
+Total Threads = 8 * 1024, FMA_per_cycle for Vega10 - 1.536GHz =    499
 
 kernel_time (hipEventElapsedTime) =10.720ms
 
-Total Threads = 16 * 1024, FMA\_per\_cycle for Vega10 - 1.536GHz =    995
+Total Threads = 16 * 1024, FMA_per_cycle for Vega10 - 1.536GHz =    995
 
 kernel_time (hipEventElapsedTime) =10.803ms
 
-Total Threads = 32 * 1024, FMA\_per\_cycle for Vega10 - 1.536GHz =   1975
+Total Threads = 32 * 1024, FMA_per_cycle for Vega10 - 1.536GHz =   1975
 
 kernel_time (hipEventElapsedTime) =10.963ms
 
-Total Threads = 64 * 1024, FMA\_per\_cycle for Vega10 - 1.536GHz =   3892
+Total Threads = 64 * 1024, FMA_per_cycle for Vega10 - 1.536GHz =   3892
 
 kernel_time (hipEventElapsedTime) =21.376ms
 
-Total Threads = 65 * 1024, FMA\_per\_cycle for Vega10 - 1.536GHz =   2027
+Total Threads = 65 * 1024, FMA_per_cycle for Vega10 - 1.536GHz =   2027
 
 kernel_time (hipEventElapsedTime) =21.383ms
 
-Total Threads = 66 * 1024, FMA\_per\_cycle for Vega10 - 1.536GHz =   2058
+Total Threads = 66 * 1024, FMA_per_cycle for Vega10 - 1.536GHz =   2058
 
 kernel_time (hipEventElapsedTime) =21.386ms
 
@@ -811,41 +811,41 @@ kernel_time (hipEventElapsedTime) =21.386ms
 
 下面是一个测试VGPR的简单实例。
 
-\_\_global\_\_ void
+__global__ void
 
-test\_kernel\_255(hipLaunchParm lp,
+test_kernel_255(hipLaunchParm lp,
 
-       float* \_\_restrict\_\_ a)
+       float* __restrict__ a)
 
 {
 
-       asm volatile("v\_mov\_b32 v0, 0");
+       asm volatile("v_mov_b32 v0, 0");
 
-       asm volatile("v\_mov\_b32 v255, 0" );
+       asm volatile("v_mov_b32 v255, 0" );
 
 }
 
  我们尝试编译并执行example-3a.cpp。编译和执行都顺利完成。然后再次用神器extractkernel查看 GCN assembly shader。发现程序只有如下三行代码：
 
-              v\_mov\_b32_e32 v0, 0                                        // 000000001100: 7E000280
+              v_mov_b32_e32 v0, 0                                        // 000000001100: 7E000280
 
-              v\_mov\_b32_e32 v255, 0                                    // 000000001104: 7FFE0280
+              v_mov_b32_e32 v255, 0                                    // 000000001104: 7FFE0280
 
               s_endpgm                                                            // 000000001108: BF810000
 
 这个结果非常符合我们的预期。我们可以增加下面一个Kernel到example-3b.cpp
 
-\_\_global\_\_ void
+__global__ void
 
-test\_kernel\_256(hipLaunchParm lp,
+test_kernel_256(hipLaunchParm lp,
 
-       float* \_\_restrict\_\_ a)
+       float* __restrict__ a)
 
 {
 
-       asm volatile("v\_mov\_b32 v0, 0");
+       asm volatile("v_mov_b32 v0, 0");
 
-       asm volatile("v\_mov\_b32 v256, 0");
+       asm volatile("v_mov_b32 v256, 0");
 
 }
 
@@ -853,7 +853,7 @@ test\_kernel\_256(hipLaunchParm lp,
 
 <inline asm>:1:16: error: unknown token in expression
 
-        v\_mov\_b32 v256, 0
+        v_mov_b32 v256, 0
 
                       ^
 
@@ -861,7 +861,7 @@ note: !srcloc = 833
 
 <inline asm>:1:18: error: not a valid operand.
 
-        v\_mov\_b32 v256, 0
+        v_mov_b32 v256, 0
 
                         ^
 
@@ -880,45 +880,45 @@ SGPR在AMD GCN体系结构是非常重要的一项特性。SGPR第一个用途�
 
 同VGPR一样，SGPR资源也是有限的， 我们也可以采用内联汇编的方法测试最大SGPR。VGPR越界在编译的时候直接出错，理论SGPR也有同样的性质。Example-4a.cpp使用下面的Kernel寻找最大SGPR。
 
-\_\_global\_\_ void
+__global__ void
 
-test\_kernel\_255(hipLaunchParm lp,
+test_kernel_255(hipLaunchParm lp,
 
-       float* \_\_restrict\_\_ a)
+       float* __restrict__ a)
 
 {
 
-   asm volatile("s\_mov\_b32 s0, 0");
+   asm volatile("s_mov_b32 s0, 0");
 
-   asm volatile("s\_mov\_b32 s95, 0" );
+   asm volatile("s_mov_b32 s95, 0" );
 
-   asm volatile("s\_mov\_b32 s96, 0" );
+   asm volatile("s_mov_b32 s96, 0" );
 
-   asm volatile("s\_mov\_b32 s97, 0" );
+   asm volatile("s_mov_b32 s97, 0" );
 
-   asm volatile("s\_mov\_b32 s98, 0" );
+   asm volatile("s_mov_b32 s98, 0" );
 
-   asm volatile("s\_mov\_b32 s99, 0" );
+   asm volatile("s_mov_b32 s99, 0" );
 
-   asm volatile("s\_mov\_b32 s100, 0" );
+   asm volatile("s_mov_b32 s100, 0" );
 
-   asm volatile("s\_mov\_b32 s101, 0" );
+   asm volatile("s_mov_b32 s101, 0" );
 
-   asm volatile("s\_mov\_b32 s102, 0" );
+   asm volatile("s_mov_b32 s102, 0" );
 
-   asm volatile("s\_mov\_b32 s103, 0" );
+   asm volatile("s_mov_b32 s103, 0" );
 
-   asm volatile("s\_mov\_b32 s104, 0" );
+   asm volatile("s_mov_b32 s104, 0" );
 
-   asm volatile("s\_mov\_b32 s105, 0" );
+   asm volatile("s_mov_b32 s105, 0" );
 
-   asm volatile("s\_mov\_b32 s106, 0" );
+   asm volatile("s_mov_b32 s106, 0" );
 
-   asm volatile("s\_mov\_b32 s107, 0" );
+   asm volatile("s_mov_b32 s107, 0" );
 
-   asm volatile("s\_mov\_b32 s108, 0" );
+   asm volatile("s_mov_b32 s108, 0" );
 
-   asm volatile("s\_mov\_b32 s109, 0" );
+   asm volatile("s_mov_b32 s109, 0" );
 
 }
 
@@ -926,7 +926,7 @@ test\_kernel\_255(hipLaunchParm lp,
 
 <inline asm>:1:16: error: unknown token in expression
 
-        s\_mov\_b32 s102, 0
+        s_mov_b32 s102, 0
 
                       ^
 
@@ -934,7 +934,7 @@ note: !srcloc = 950
 
 <inline asm>:1:18: error: not a valid operand.
 
-        s\_mov\_b32 s102, 0
+        s_mov_b32 s102, 0
 
                         ^
 
@@ -942,7 +942,7 @@ note: !srcloc = 950
 
 <inline asm>:1:16: error: unknown token in expression
 
-        s\_mov\_b32 s103, 0
+        s_mov_b32 s103, 0
 
                       ^
 
@@ -950,7 +950,7 @@ note: !srcloc = 990
 
 <inline asm>:1:18: error: not a valid operand.
 
-        s\_mov\_b32 s103, 0
+        s_mov_b32 s103, 0
 
                         ^
 
@@ -958,7 +958,7 @@ note: !srcloc = 990
 
 <inline asm>:1:16: error: unknown token in expression
 
-        s\_mov\_b32 s104, 0
+        s_mov_b32 s104, 0
 
                       ^
 
@@ -966,7 +966,7 @@ note: !srcloc = 1030
 
 <inline asm>:1:18: error: not a valid operand.
 
-        s\_mov\_b32 s104, 0
+        s_mov_b32 s104, 0
 
                         ^
 
@@ -974,7 +974,7 @@ note: !srcloc = 1030
 
 <inline asm>:1:16: error: unknown token in expression
 
-        s\_mov\_b32 s105, 0
+        s_mov_b32 s105, 0
 
                       ^
 
@@ -982,7 +982,7 @@ note: !srcloc = 1070
 
 <inline asm>:1:18: error: not a valid operand.
 
-        s\_mov\_b32 s105, 0
+        s_mov_b32 s105, 0
 
                         ^
 
@@ -990,7 +990,7 @@ note: !srcloc = 1070
 
 <inline asm>:1:16: error: unknown token in expression
 
-        s\_mov\_b32 s106, 0
+        s_mov_b32 s106, 0
 
                       ^
 
@@ -998,7 +998,7 @@ note: !srcloc = 1110
 
 <inline asm>:1:18: error: not a valid operand.
 
-        s\_mov\_b32 s106, 0
+        s_mov_b32 s106, 0
 
                         ^
 
@@ -1006,7 +1006,7 @@ note: !srcloc = 1110
 
 <inline asm>:1:16: error: unknown token in expression
 
-        s\_mov\_b32 s107, 0
+        s_mov_b32 s107, 0
 
                       ^
 
@@ -1014,7 +1014,7 @@ note: !srcloc = 1150
 
 <inline asm>:1:18: error: not a valid operand.
 
-        s\_mov\_b32 s107, 0
+        s_mov_b32 s107, 0
 
                         ^
 
@@ -1022,7 +1022,7 @@ note: !srcloc = 1150
 
 <inline asm>:1:16: error: unknown token in expression
 
-        s\_mov\_b32 s108, 0
+        s_mov_b32 s108, 0
 
                       ^
 
@@ -1030,7 +1030,7 @@ note: !srcloc = 1190
 
 <inline asm>:1:18: error: not a valid operand.
 
-        s\_mov\_b32 s108, 0
+        s_mov_b32 s108, 0
 
                         ^
 
@@ -1038,7 +1038,7 @@ note: !srcloc = 1190
 
 <inline asm>:1:16: error: unknown token in expression
 
-        s\_mov\_b32 s109, 0
+        s_mov_b32 s109, 0
 
                       ^
 
@@ -1046,7 +1046,7 @@ note: !srcloc = 1230
 
 <inline asm>:1:18: error: not a valid operand.
 
-        s\_mov\_b32 s109, 0
+        s_mov_b32 s109, 0
 
                         ^
 
@@ -1065,7 +1065,7 @@ SGPR S102之前能够被编译器正确识别，我们就找到了最大程序SG
 
        if (hipThreadIdx_x == 0) {
 
-              for (int i = 0; i < FMA\_PER\_THREDS; i++){
+              for (int i = 0; i < FMA_PER_THREDS; i++){
 
                       sum = t0 * sum + t1;
 
@@ -1075,7 +1075,7 @@ SGPR S102之前能够被编译器正确识别，我们就找到了最大程序SG
 
        else {
 
-              for (int i = 0; i < FMA\_PER\_THREDS; i++){
+              for (int i = 0; i < FMA_PER_THREDS; i++){
 
                       sum = t1 * sum + t0;
 
@@ -1085,19 +1085,19 @@ SGPR S102之前能够被编译器正确识别，我们就找到了最大程序SG
 
 SIMD的特点是所有Threads必须执行相同的指令， 由于Thread0和其他代码路径不同， 那么编译器必须先生成Thread0的代码，然后生成剩余63个Threads的代码。那么SIMD则顺序Thread0的代码，然后Thread1-63的代码。那么性能将下降到2.2.1实例代码的50%。
 
-是否可以改进这种分歧？把2.2.1的实例中循环体部分看作一个函数 foo，那么Thread0可以当作foo（t0, t1），thread1-63看做是foo(t1,t0)，通过对参数的交换，实现所有线程调用同样参数，那么可以大大降低Divergence带来的性能下降。 参考下面test\_kernel\_optimize.
+是否可以改进这种分歧？把2.2.1的实例中循环体部分看作一个函数 foo，那么Thread0可以当作foo（t0, t1），thread1-63看做是foo(t1,t0)，通过对参数的交换，实现所有线程调用同样参数，那么可以大大降低Divergence带来的性能下降。 参考下面test_kernel_optimize.
 
-\_\_global\_\_ void
+__global__ void
 
-test\_kernel\_divergence(hipLaunchParm lp,
+test_kernel_divergence(hipLaunchParm lp,
 
-       float* \_\_restrict\_\_ a)
+       float* __restrict__ a)
 
 {
 
-       int x = hipBlockDim\_x * hipBlockIdx\_x + hipThreadIdx_x;
+       int x = hipBlockDim_x * hipBlockIdx_x + hipThreadIdx_x;
 
-       int y = hipBlockDim\_y * hipBlockIdx\_y + hipThreadIdx_y;
+       int y = hipBlockDim_y * hipBlockIdx_y + hipThreadIdx_y;
 
        float t0 = (float)x / (float)(x + 1);
 
@@ -1107,7 +1107,7 @@ test\_kernel\_divergence(hipLaunchParm lp,
 
        if (hipThreadIdx_x == 0) {
 
-              for (int i = 0; i < FMA\_PER\_THREDS; i++){
+              for (int i = 0; i < FMA_PER_THREDS; i++){
 
                       sum = t0 * sum + t1;
 
@@ -1117,7 +1117,7 @@ test\_kernel\_divergence(hipLaunchParm lp,
 
        else {
 
-              for (int i = 0; i < FMA\_PER\_THREDS; i++){
+              for (int i = 0; i < FMA_PER_THREDS; i++){
 
                       sum = t1 * sum + t0;
 
@@ -1135,17 +1135,17 @@ test\_kernel\_divergence(hipLaunchParm lp,
 
 }
 
-\_\_global\_\_ void
+__global__ void
 
-test\_kernel\_optimize(hipLaunchParm lp,
+test_kernel_optimize(hipLaunchParm lp,
 
-       float* \_\_restrict\_\_ a)
+       float* __restrict__ a)
 
 {
 
-       int x = hipBlockDim\_x * hipBlockIdx\_x + hipThreadIdx_x;
+       int x = hipBlockDim_x * hipBlockIdx_x + hipThreadIdx_x;
 
-       int y = hipBlockDim\_y * hipBlockIdx\_y + hipThreadIdx_y;
+       int y = hipBlockDim_y * hipBlockIdx_y + hipThreadIdx_y;
 
        float t0 = (float)x / (float)(x + 1);
 
@@ -1163,7 +1163,7 @@ test\_kernel\_optimize(hipLaunchParm lp,
 
        }
 
-       for (int i = 0; i < FMA\_PER\_THREDS ; i++)
+       for (int i = 0; i < FMA_PER_THREDS ; i++)
 
        {
 
@@ -1187,19 +1187,19 @@ execute test kernel
 
 kernel_time (hipEventElapsedTime) = 3.774ms
 
-Total Threads = 1 * 256, FMA\_per\_cycle for Vega10 - 1.536GHz =     44
+Total Threads = 1 * 256, FMA_per_cycle for Vega10 - 1.536GHz =     44
 
 execute divergence kernel
 
 kernel_time (hipEventElapsedTime) = 8.119ms
 
-Total Threads = 1 * 256, FMA\_per\_cycle for Vega10 - 1.536GHz =     21
+Total Threads = 1 * 256, FMA_per_cycle for Vega10 - 1.536GHz =     21
 
 execute optimized kernel
 
 kernel_time (hipEventElapsedTime) = 3.838ms
 
-Total Threads = 1 * 256, FMA\_per\_cycle for Vega10 - 1.536GHz =     43
+Total Threads = 1 * 256, FMA_per_cycle for Vega10 - 1.536GHz =     43
 
 2.6 Memory Read Latency：显存读写延迟
 ------------------------------
@@ -1208,21 +1208,21 @@ Total Threads = 1 * 256, FMA\_per\_cycle for Vega10 - 1.536GHz =     43
 
 读显存的延迟可以连续读不同的Cacheline，下一次读操作用前一次读操作的返回值，连续执行1,000,000次的有依赖关系的读操作，取平均即可获得读操作的延迟。我们目前还不知道如何Cacheline大小，而依据经验值，一条cacheline长度 可能为 16，32，64，128字节，因此我们程序读下一个值的地址比上一个地址大256DWORDs（1024字节），这样可以保证整个程序不会读两个相同的Cacheline。程序中buf的所有值为256。
 
-\_\_global\_\_ void
+__global__ void
 
 test_kernel(hipLaunchParm lp,
 
-       int* \_\_restrict\_\_ buf)
+       int* __restrict__ buf)
 
 {
 
-       int x = hipBlockDim\_x * hipBlockIdx\_x + hipThreadIdx_x;
+       int x = hipBlockDim_x * hipBlockIdx_x + hipThreadIdx_x;
 
 int t = buf\[x\];
 
        //dependency reads
 
-       for( int i=1; i < MAX\_MEM\_READS; i++)
+       for( int i=1; i < MAX_MEM_READS; i++)
 
        {
 
@@ -1244,23 +1244,23 @@ int t = buf\[x\];
 
 kernel_time (hipEventElapsedTime) =442.050ms
 
-mem\_read\_latency_cycle =   647 cycles for Vega10--1.536GHz
+mem_read_latency_cycle =   647 cycles for Vega10--1.536GHz
 
-使用extractkernel工具产生GCN assembly得到以下指令序列做一次显存读操作，总计5条VALU和1条SALU指令，这六条指令需要至少24个时钟周期， v\_lshlrev\_b64可能需要16个始终周期，那么可以得出显存读操作的延时为610个始终周期。
+使用extractkernel工具产生GCN assembly得到以下指令序列做一次显存读操作，总计5条VALU和1条SALU指令，这六条指令需要至少24个时钟周期， v_lshlrev_b64可能需要16个始终周期，那么可以得出显存读操作的延时为610个始终周期。
 
-              v\_mul\_lo_u32 v2, v2, s3                                    // 000000001504: D2850002 00000702
+              v_mul_lo_u32 v2, v2, s3                                    // 000000001504: D2850002 00000702
 
-              s\_add\_i32 s3, s2, -2                                       // 00000000150C: 8103C202
+              s_add_i32 s3, s2, -2                                       // 00000000150C: 8103C202
 
-              v\_ashrrev\_i32_e32 v3, 31, v2                               // 000000001510: 2206049F
+              v_ashrrev_i32_e32 v3, 31, v2                               // 000000001510: 2206049F
 
-              v\_lshlrev\_b64 v\[2:3\], 2, v\[2:3\]                            // 000000001514: D28F0002 00020482
+              v_lshlrev_b64 v\[2:3\], 2, v\[2:3\]                            // 000000001514: D28F0002 00020482
 
-              v\_add\_co\_u32\_e32 v2, vcc, s0, v2                           // 00000000151C: 32040400
+              v_add_co_u32_e32 v2, vcc, s0, v2                           // 00000000151C: 32040400
 
-              v\_addc\_co\_u32\_e32 v3, vcc, v4, v3, vcc                     // 000000001520: 38060704
+              v_addc_co_u32_e32 v3, vcc, v4, v3, vcc                     // 000000001520: 38060704
 
-              global\_load\_dword v2, v\[2:3\], off                          // 000000001524: DC508000 027F0002
+              global_load_dword v2, v\[2:3\], off                          // 000000001524: DC508000 027F0002
 
               s_waitcnt vmcnt(0)  
 
@@ -1269,15 +1269,15 @@ mem\_read\_latency_cycle =   647 cycles for Vega10--1.536GHz
 
 本节给出一个不太准确的测量缓存行长度的办法。参考下面的程序，buf中所有的值都为固定值1，而却只有一个thread，所有的读取地址都依赖于上一个地址，如果多个连续的读在同一个地址内，缓存产生命中，那么它的平均单笔延迟远小于从读显存延迟，否则非常接近读显存延迟。
 
-\_\_global\_\_ void
+__global__ void
 
 test_kernel(hipLaunchParm lp,
 
-       int* \_\_restrict\_\_ buf, int rangesize, int totalreads)
+       int* __restrict__ buf, int rangesize, int totalreads)
 
 {
 
-    int x = hipBlockDim\_x * hipBlockIdx\_x + hipThreadIdx_x; 
+    int x = hipBlockDim_x * hipBlockIdx_x + hipThreadIdx_x; 
 
     int t = buf\[x\];
 
@@ -1311,37 +1311,37 @@ test_kernel(hipLaunchParm lp,
 
 RangeSize\[      16\], kernel_time (hipEventElapsedTime) =4639.969ms
 
-RangeSize\[      16\], mem\_read\_latency_cycle =   361 cycles for Vega10--1.536GHz
+RangeSize\[      16\], mem_read_latency_cycle =   361 cycles for Vega10--1.536GHz
 
 RangeSize\[      32\], kernel_time (hipEventElapsedTime) =3060.621ms
 
-RangeSize\[      32\], mem\_read\_latency_cycle =   476 cycles for Vega10--1.536GHz
+RangeSize\[      32\], mem_read_latency_cycle =   476 cycles for Vega10--1.536GHz
 
 RangeSize\[      64\], kernel_time (hipEventElapsedTime) =2192.251ms
 
-RangeSize\[      64\], mem\_read\_latency_cycle =   682 cycles for Vega10--1.536GHz
+RangeSize\[      64\], mem_read_latency_cycle =   682 cycles for Vega10--1.536GHz
 
 RangeSize\[     128\], kernel_time (hipEventElapsedTime) =1093.262ms
 
-RangeSize\[     128\], mem\_read\_latency_cycle =   681 cycles for Vega10--1.536GHz
+RangeSize\[     128\], mem_read_latency_cycle =   681 cycles for Vega10--1.536GHz
 
 RangeSize\[     256\], kernel_time (hipEventElapsedTime) =566.791ms
 
-RangeSize\[     256\], mem\_read\_latency_cycle =   706 cycles for Vega10--1.536GHz
+RangeSize\[     256\], mem_read_latency_cycle =   706 cycles for Vega10--1.536GHz
 
 ### 2.6.3 L1/L2 Cacheline Hit Latency：一/二级缓存命中延时
 
 Example-6c.cpp展示一个简单的Kernel测量一级缓存命中的延时。设置rangesize = 1024，4096字节远小于16KB L2 Cache，那么L1 Cache的命中率接近99%。 将步长设置为Cacheline大小16DWORDs==64字节，那么每次读取指令都会指向一个新的Cacheline。
 
-\_\_global\_\_ void
+__global__ void
 
 test_kernel(hipLaunchParm lp,
 
-       int* \_\_restrict\_\_ buf, int rangesize, int totalreads)
+       int* __restrict__ buf, int rangesize, int totalreads)
 
 {
 
-    int x = hipBlockDim\_x * hipBlockIdx\_x + hipThreadIdx_x; 
+    int x = hipBlockDim_x * hipBlockIdx_x + hipThreadIdx_x; 
 
     int t = buf\[x\];
 
@@ -1375,7 +1375,7 @@ test_kernel(hipLaunchParm lp,
 
 RangeSize\[    4096\], kernel_time (hipEventElapsedTime) =48.065ms
 
-RangeSize\[    4096\], mem\_read\_latency_cycle =   239 cycles for Vega10--1.536GHz
+RangeSize\[    4096\], mem_read_latency_cycle =   239 cycles for Vega10--1.536GHz
 
 那么可以猜测L1 Cache命中延时小于239个时钟周期，用”extractkernel -i example-6c.exe”查看GCN Assembly 代码，获得主循环体代码如下：
 
@@ -1383,31 +1383,31 @@ RangeSize\[    4096\], mem\_read\_latency_cycle =   239 cycles for Vega10--1.536
 
         s_waitcnt vmcnt(0)                                        
 
-        v\_mul\_lo_u32 v2, v2, s2                                   
+        v_mul_lo_u32 v2, v2, s2                                   
 
-        v\_mov\_b32_e32 v4, s1                                      
+        v_mov_b32_e32 v4, s1                                      
 
-        v\_mul\_lo_u32 v2, v2, s5                                    
+        v_mul_lo_u32 v2, v2, s5                                    
 
-        s\_add\_i32 s5, s5, 1                                        
+        s_add_i32 s5, s5, 1                                        
 
-        s\_cmp\_lg_u32 s3, s5                                       
+        s_cmp_lg_u32 s3, s5                                       
 
-        v\_add\_u32_e32 v2, -1, v2                                  
+        v_add_u32_e32 v2, -1, v2                                  
 
-        v\_and\_b32_e32 v2, s4, v2                                   
+        v_and_b32_e32 v2, s4, v2                                   
 
-        v\_ashrrev\_i32_e32 v3, 31, v2                              
+        v_ashrrev_i32_e32 v3, 31, v2                              
 
-        v\_lshlrev\_b64 v\[2:3\], 2, v\[2:3\]                          
+        v_lshlrev_b64 v\[2:3\], 2, v\[2:3\]                          
 
-        v\_add\_co\_u32\_e32 v2, vcc, s0, v2                         
+        v_add_co_u32_e32 v2, vcc, s0, v2                         
 
-        v\_addc\_co\_u32\_e32 v3, vcc, v4, v3, vcc                   
+        v_addc_co_u32_e32 v3, vcc, v4, v3, vcc                   
 
-        global\_load\_dword v2, v\[2:3\], off                         
+        global_load_dword v2, v\[2:3\], off                         
 
-        s\_cbranch\_scc1 BB0_2                                      
+        s_cbranch_scc1 BB0_2                                      
 
 GCN Assembly代码总计9条VALU指令， 4条Scalar指令，这些指令的延时需要64时钟周期，考虑到由于Cacheline不对齐会损失32-60个始终周期，L1 Cache命中的延时最低100个时钟周期，最高130个时钟周期。
 
@@ -1415,7 +1415,7 @@ Example-6d.cpp将rangesize修改为32768（128KB），编译执行获得如下�
 
 RangeSize\[  131072\], kernel_time (hipEventElapsedTime) =75.581ms
 
-RangeSize\[  131072\], mem\_read\_latency_cycle =   376 cycles for Vega10--1.536GHz
+RangeSize\[  131072\], mem_read_latency_cycle =   376 cycles for Vega10--1.536GHz
 
 3.7 Alternative Method to measure CacheLine Size：另一组测试Cacheline长度
 -----------------------------------------------------------------
@@ -1426,17 +1426,17 @@ Example-7a.cpp和example-7b.cpp尝试不断增加读写步长来Cacheline大小�
 
 ### 3.7.2 Divergence for Memory Read/Write：显存访问分歧
 
-Example-7c.cpp专门设计一个非常简单的方法产生显存读写分歧而导致的性能下降一半。让Thread0的显存地址计算和其他64个地址计算不同，这样编译器是否会产生两个不同global\_store\_dword指令，编译后检查Extractkernel产生的GCN assembly 代码，发现只有一条global\_store\_dword，对于这个简单的代码，HIPCC编译器表现良好。
+Example-7c.cpp专门设计一个非常简单的方法产生显存读写分歧而导致的性能下降一半。让Thread0的显存地址计算和其他64个地址计算不同，这样编译器是否会产生两个不同global_store_dword指令，编译后检查Extractkernel产生的GCN assembly 代码，发现只有一条global_store_dword，对于这个简单的代码，HIPCC编译器表现良好。
 
-\_\_global\_\_ void
+__global__ void
 
 test_kernel(hipLaunchParm lp,
 
-       int* \_\_restrict\_\_ buf, int divergence )
+       int* __restrict__ buf, int divergence )
 
 {
 
-       int x = hipBlockDim\_x * hipBlockIdx\_x + hipThreadIdx_x;        
+       int x = hipBlockDim_x * hipBlockIdx_x + hipThreadIdx_x;        
 
        if ((hipThreadIdx_x & divergence) == divergence)
 
@@ -1461,15 +1461,15 @@ test_kernel(hipLaunchParm lp,
 
 在优化CNN卷积运算中，需要实时生成索引进行加速。假设我们需要生成NCHW对应Channel=0时候NHW个元素的索引。下面是简单代码实现，BlockDim = Dim3(256,1,1)， Grim = Dim3(H * W/256, N, 1)。
 
-\_\_global\_\_ void
+__global__ void
 
 test_kernel(hipLaunchParm lp,
 
-       int* \_\_restrict\_\_ buf, int h, int w, int c)
+       int* __restrict__ buf, int h, int w, int c)
 
 {
 
-       int x = hipBlockDim\_x * hipBlockIdx\_x + hipThreadIdx_x;
+       int x = hipBlockDim_x * hipBlockIdx_x + hipThreadIdx_x;
 
        int n = hipBlockIdx_y;
 
@@ -1481,7 +1481,7 @@ test_kernel(hipLaunchParm lp,
 
               int nhw_offset = x + n * h * w;
 
-              buf\[nhw\_offset\] = nchw\_offset;
+              buf\[nhw_offset\] = nchw_offset;
 
        }
 
@@ -1498,17 +1498,17 @@ N\*H\*W=\[1024,56,56\], hipEventElapsedTime =38.715 microseconds, 309.001966 GB/
 
 GCN架构中LDS访问也是异步指令， 同显存读写指令一样，我们首先要获得LDS指令的延时。同理，使用一个线程，使用循环不断访问同一个地址，那么我们就可以获得LDS Latency。Mask防止访问越界， Thread0的Temp始终等于0， 该Mask并无特殊必要。
 
-\_\_global\_\_ void
+__global__ void
 
 test_kernel(hipLaunchParm lp,
 
-       int* \_\_restrict\_\_ buf, int mask, int outerLloops)
+       int* __restrict__ buf, int mask, int outerLloops)
 
 {
 
-       int x = hipBlockDim\_x * hipBlockIdx\_x + hipThreadIdx_x;
+       int x = hipBlockDim_x * hipBlockIdx_x + hipThreadIdx_x;
 
-       \_\_shared\_\_ int ldsData\[4096\];
+       __shared__ int ldsData\[4096\];
 
        ldsData\[hipThreadIdx_x\] = buf\[x\];
 
@@ -1538,11 +1538,11 @@ test_kernel(hipLaunchParm lp,
 
 编译后example.cpp并使用extractkernel发现LDS read由如下序列指令：
 
-              v\_and\_b32_e32 v0, s0, v0                    
+              v_and_b32_e32 v0, s0, v0                    
 
-              v\_lshlrev\_b32_e32 v0, 2, v0                 
+              v_lshlrev_b32_e32 v0, 2, v0                 
 
-              ds\_read\_b32 v0, v0                               
+              ds_read_b32 v0, v0                               
 
               s_waitcnt lgkmcnt(0)                             
 
@@ -1556,23 +1556,23 @@ latency for Vega10(1.536Ghz):  63 cycles
 
 该实例只使用了64个threads即一个Wave，需要通过一个循环对4096个LDS单元做初始化。然后通过mask保证访问地址不越界。
 
-\_\_global\_\_ void
+__global__ void
 
 test_kernel(hipLaunchParm lp,
 
-       int* \_\_restrict\_\_ buf, int stride, int mask, int outerLloops)
+       int* __restrict__ buf, int stride, int mask, int outerLloops)
 
 {
 
-       int x = hipBlockDim\_x * hipBlockIdx\_x + hipThreadIdx_x;
+       int x = hipBlockDim_x * hipBlockIdx_x + hipThreadIdx_x;
 
-       \_\_shared\_\_ int ldsData\[4096\];
+       __shared__ int ldsData\[4096\];
 
        for (int i = 0; i < NUM; i += 64)
 
        {
 
-              ldsData\[hipThreadIdx\_x + i\] = buf\[hipThreadIdx\_x + i\];
+              ldsData\[hipThreadIdx_x + i\] = buf\[hipThreadIdx_x + i\];
 
        }
 
@@ -1649,15 +1649,15 @@ strdie = \[16\], latency for Vega10(1.536Ghz):  115 cycles
 
 #define PROTECT_BITS  (0xFFFF0000)
 
-\_\_global\_\_ void
+__global__ void
 
 test_kernel(hipLaunchParm lp,
 
-       int* \_\_restrict\_\_ buf, int protectBits, int shrinkBits)
+       int* __restrict__ buf, int protectBits, int shrinkBits)
 
 {
 
-       int x = hipBlockDim\_x * hipBlockIdx\_x + hipThreadIdx_x;
+       int x = hipBlockDim_x * hipBlockIdx_x + hipThreadIdx_x;
 
        int address;
 
@@ -1706,15 +1706,15 @@ SGEMM避免读写冲突的一个简单方法是使用Padding，例如K=4096，�
 
 #define OUTER_LOOPS  10000
 
-\_\_global\_\_ void
+__global__ void
 
 test_kernel(hipLaunchParm lp,
 
-       int* \_\_restrict\_\_ buf, int outerLoops)
+       int* __restrict__ buf, int outerLoops)
 
 {
 
-       int x = hipBlockDim\_x * hipBlockIdx\_x + hipThreadIdx_x;
+       int x = hipBlockDim_x * hipBlockIdx_x + hipThreadIdx_x;
 
        double f = sin(x / 256.0);
 
@@ -1747,17 +1747,17 @@ sin --double needs 2339 cycles
 
 Reduction是一个非常常见的操作，例如求一个数组的最大、最小值，或者求和。常见的GPU实现，第一步将所有数据写到LDS，第二步有效Threads减半，每个有效线程读两个数，求和，然后结果写回LDS，重复步骤二直到有效线程数为1。根据我们前面的测试，LDS读写的延迟比较大， 如果每次对4个数求和，是否可以大大提高读写速度？
 
-\_\_global\_\_ void
+__global__ void
 
 test_kernel(hipLaunchParm lp,
 
-        int* \_\_restrict\_\_ buf, int reduce\_number\_once)
+        int* __restrict__ buf, int reduce_number_once)
 
 {
 
-        int x = hipBlockDim\_x * hipBlockIdx\_x + hipThreadIdx_x;
+        int x = hipBlockDim_x * hipBlockIdx_x + hipThreadIdx_x;
 
-        \_\_shared\_\_ int ldsData\[256\];
+        __shared__ int ldsData\[256\];
 
         ldsData\[hipThreadIdx_x\] = buf\[x\];
 
@@ -1765,7 +1765,7 @@ test_kernel(hipLaunchParm lp,
 
         int sum =0;
 
-        if (reduce\_number\_once == 2)
+        if (reduce_number_once == 2)
 
         {
 
@@ -1775,7 +1775,7 @@ test_kernel(hipLaunchParm lp,
 
                         if (s > hipThreadIdx_x) {
 
-                                ldsData\[hipThreadIdx\_x\] = ldsData\[hipThreadIdx\_x\] +
+                                ldsData\[hipThreadIdx_x\] = ldsData\[hipThreadIdx_x\] +
 
                                                            ldsData\[hipThreadIdx_x + s\];
 
@@ -1795,7 +1795,7 @@ test_kernel(hipLaunchParm lp,
 
         }
 
-        if (reduce\_number\_once == 4)
+        if (reduce_number_once == 4)
 
         {
 
@@ -1805,7 +1805,7 @@ test_kernel(hipLaunchParm lp,
 
                if (s > hipThreadIdx_x) {
 
-                    ldsData\[hipThreadIdx\_x\] =  ldsData\[hipThreadIdx\_x\] +
+                    ldsData\[hipThreadIdx_x\] =  ldsData\[hipThreadIdx_x\] +
 
                                                ldsData\[hipThreadIdx_x + s\] +
 
@@ -1852,17 +1852,17 @@ Reduce 4 once:  elapsed time:2.817486
 
 在CNN的Convolution，如果Filter Size大于1x1，那么Padding(填充)是一个非常重要的函数。假设BatchSize=1024, Channels=1024， Height=Width=7, Padding=3X3，那么Padding之后的Height=Width=13x13，13x13=169远远小于256，因此我们需要每个Threads读写超过一个Channel的数据。下面的代码BlockDim=Dim3(256,1,1)，GridDim= (【13 * 13/256】,  Channeles=1024, BatchSize=1024)。代码先计算输入原始输入数据的地址，如果在 【7，7】的范围内，那么需要读取显存数据，否则设置为Padding Value== 0.
 
-\_\_global\_\_ void
+__global__ void
 
 test_kernel(hipLaunchParm lp,
 
-       float* \_\_restrict\_\_ bufA, float* \_\_restrict\_\_ bufB, int channels_once, int c, int h, int w,  int padding )
+       float* __restrict__ bufA, float* __restrict__ bufB, int channels_once, int c, int h, int w,  int padding )
 
 {
 
        int hw =  hipThreadIdx_x;
 
-       int cc = channels\_once * hipBlockIdx\_y;
+       int cc = channels_once * hipBlockIdx_y;
 
        int n = hipBlockIdx_z;
 
@@ -1894,7 +1894,7 @@ test_kernel(hipLaunchParm lp,
 
               if (needFetching == true) {
 
-                      int base = n * c * in\_h * in\_w + cc * in\_h * in\_w +
+                      int base = n * c * in_h * in_w + cc * in_h * in_w +
 
                             hh * in_w + ww;
 
@@ -1902,7 +1902,7 @@ test_kernel(hipLaunchParm lp,
 
                       {
 
-                             org\_data\[i\] = bufA\[base + i * in\_h * in_w\];
+                             org_data\[i\] = bufA\[base + i * in_h * in_w\];
 
                       }
 
@@ -1944,51 +1944,51 @@ Read/Write \[16\] Channels per thread:  elapsed time:9.165571
 
 Read/Write \[16\] Channels per thread:  ==> Estimated Bandwidth 144  GB/s
 
-获得的性能非常低，远远低于480 GB/s的理论极限。 使用”extractkernels example-13.exe”获得编译后的GCN汇编程序， 发现以下奇怪代码，总共包含16条buffer\_store\_dword，和一条buffer\_load\_dword值令。
+获得的性能非常低，远远低于480 GB/s的理论极限。 使用”extractkernels example-13.exe”获得编译后的GCN汇编程序， 发现以下奇怪代码，总共包含16条buffer_store_dword，和一条buffer_load_dword值令。
 
-               v\_mov\_b32_e32 v4, 0
+               v_mov_b32_e32 v4, 0
 
-              buffer\_store\_dword v4, off, s\[0:3\], s11 offset:64
+              buffer_store_dword v4, off, s\[0:3\], s11 offset:64
 
-              buffer\_store\_dword v4, off, s\[0:3\], s11 offset:56
+              buffer_store_dword v4, off, s\[0:3\], s11 offset:56
 
-              buffer\_store\_dword v4, off, s\[0:3\], s11 offset:48
+              buffer_store_dword v4, off, s\[0:3\], s11 offset:48
 
-              buffer\_store\_dword v4, off, s\[0:3\], s11 offset:44
+              buffer_store_dword v4, off, s\[0:3\], s11 offset:44
 
-              buffer\_store\_dword v4, off, s\[0:3\], s11 offset:36
+              buffer_store_dword v4, off, s\[0:3\], s11 offset:36
 
-              buffer\_store\_dword v4, off, s\[0:3\], s11 offset:32
+              buffer_store_dword v4, off, s\[0:3\], s11 offset:32
 
-              buffer\_store\_dword v4, off, s\[0:3\], s11 offset:20
+              buffer_store_dword v4, off, s\[0:3\], s11 offset:20
 
-              buffer\_store\_dword v4, off, s\[0:3\], s11 offset:16
+              buffer_store_dword v4, off, s\[0:3\], s11 offset:16
 
-              buffer\_store\_dword v4, off, s\[0:3\], s11 offset:8 
+              buffer_store_dword v4, off, s\[0:3\], s11 offset:8 
 
-              buffer\_store\_dword v4, off, s\[0:3\], s11 offset:60
+              buffer_store_dword v4, off, s\[0:3\], s11 offset:60
 
-              buffer\_store\_dword v4, off, s\[0:3\], s11 offset:52
+              buffer_store_dword v4, off, s\[0:3\], s11 offset:52
 
-              buffer\_store\_dword v4, off, s\[0:3\], s11 offset:40
+              buffer_store_dword v4, off, s\[0:3\], s11 offset:40
 
-              buffer\_store\_dword v4, off, s\[0:3\], s11 offset:28
+              buffer_store_dword v4, off, s\[0:3\], s11 offset:28
 
-              buffer\_store\_dword v4, off, s\[0:3\], s11 offset:24
+              buffer_store_dword v4, off, s\[0:3\], s11 offset:24
 
-              buffer\_store\_dword v4, off, s\[0:3\], s11 offset:12
+              buffer_store_dword v4, off, s\[0:3\], s11 offset:12
 
-              buffer\_store\_dword v4, off, s\[0:3\], s11 offset:4 
+              buffer_store_dword v4, off, s\[0:3\], s11 offset:4 
 
               …
 
-              buffer\_store\_dword v4, v2, s\[0:3\], s11 offen
+              buffer_store_dword v4, v2, s\[0:3\], s11 offen
 
-              buffer\_load\_dword v6, v2, s\[0:3\], s11 offen
+              buffer_load_dword v6, v2, s\[0:3\], s11 offen
 
-而同时我们从以前的经验获知，HIPCC编译器通常使用global\_load\_dword和global\_store\_dwor指令读写显存数据。16条写显存指令和程序中初始化”org\_data\[i\] =0.0f”最接近，为证实这个猜测修改为”org\_data\[i\] =0.1111f”，“v\_mov\_b32\_e32 v4, 0”变成了“v\_mov\_b32\_e32 v4, 0x3de38da4”。编译器在16个org\_data的初始化为0后，然后把org\_data缓存到显存，然后使用时再从显存读出，这样程序的效率大大降低。 通常只有在寄存器超过256时，编译器才需要使用显存补充缺失的存储器。这个简单程序显然不需要这么多寄存器。HIPCC编译器把这块显存称为scratch（参考产生的GCN汇编程序中的scratch\_hi 和 scratch\_lo）。
+而同时我们从以前的经验获知，HIPCC编译器通常使用global_load_dword和global_store_dwor指令读写显存数据。16条写显存指令和程序中初始化”org_data\[i\] =0.0f”最接近，为证实这个猜测修改为”org_data\[i\] =0.1111f”，“v_mov_b32_e32 v4, 0”变成了“v_mov_b32_e32 v4, 0x3de38da4”。编译器在16个org_data的初始化为0后，然后把org_data缓存到显存，然后使用时再从显存读出，这样程序的效率大大降低。 通常只有在寄存器超过256时，编译器才需要使用显存补充缺失的存储器。这个简单程序显然不需要这么多寄存器。HIPCC编译器把这块显存称为scratch（参考产生的GCN汇编程序中的scratch_hi 和 scratch_lo）。
 
-         一个可能的猜测是循环变量channles\_once作为输入参数出现，而编译器无法判别总的循环次数，不能判别需要org\_data的实际大小，而把导致org_data被分配到scratch memory。
+         一个可能的猜测是循环变量channles_once作为输入参数出现，而编译器无法判别总的循环次数，不能判别需要org_data的实际大小，而把导致org_data被分配到scratch memory。
 
 ### 2.13.2 Optimize Kernel to Remove Scratch Memory
 
