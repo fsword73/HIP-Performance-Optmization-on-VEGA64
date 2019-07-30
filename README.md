@@ -548,7 +548,7 @@ extractkernel -i  ./example-2a.exe
 Generated GCN ISA for gfx900 at: ./example-2a.exe-gfx900.isa
 </td></tr></table>
 打开example-2a.exe-gfx900.isa，可以发现如下代码段：
-```
+<table><tr><td bgcolor=“#707070”>
 000000000000124c BB0_1:
 
        v_mad_f32 v3, v1, v3, v2                                   // 00000000124C: D1C10003 040A0701
@@ -636,7 +636,7 @@ Generated GCN ISA for gfx900 at: ./example-2a.exe-gfx900.isa
        v_mad_f32 v3, v1, v3, v2                                   // 00000000138C: D1C10003 040A0701
 
        s_cbranch_scc1 BB0_1                                       // 000000001394: BF85FFAD
-```
+</td></tr></table>
 该段GCN 汇编代码是对应test_kernel的100万次循环，包含：
 
 *   40个v_mad_f32指令，编译器做了默认40次循环展开，
@@ -880,7 +880,7 @@ clang-8: error: linker command failed with exit code 1 (use -v to see invocation
 SGPR在AMD GCN体系结构是非常重要的一项特性。SGPR第一个用途是读GPU显存常量到计算单元，例如图形渲染中的投影矩阵，纹理对象描述，纹理采样描述等。SGPR是可读可写， 它可以作为用于程序流程控制，例如循环变量， 从而减低SIMD VGPR的需求，同时也降低大部分循环控制的功耗。
 
 同VGPR一样，SGPR资源也是有限的， 我们也可以采用内联汇编的方法测试最大SGPR。VGPR越界在编译的时候直接出错，理论SGPR也有同样的性质。Example-4a.cpp使用下面的Kernel寻找最大SGPR。
-```
+<table><tr><td bgcolor=“#707070”>
 __global__ void
 
 test_kernel_255(hipLaunchParm lp,
@@ -922,7 +922,7 @@ test_kernel_255(hipLaunchParm lp,
    asm volatile("s_mov_b32 s109, 0" );
 
 }
-```
+</td></tr></table>
 老规矩，使用“hipcc  example-4a.cpp -o example-4a.exe”尝试编译。 得到如下错误：
 <table><tr><td bgcolor=“#707070”>
 <inline asm>:1:16: error: unknown token in expression
@@ -1248,7 +1248,7 @@ kernel_time (hipEventElapsedTime) =442.050ms
 mem_read_latency_cycle =   647 cycles for Vega10--1.536GHz
 </td></tr></table>
 使用extractkernel工具产生GCN assembly得到以下指令序列做一次显存读操作，总计5条VALU和1条SALU指令，这六条指令需要至少24个时钟周期， v_lshlrev_b64可能需要16个始终周期，那么可以得出显存读操作的延时为610个始终周期。
-```
+<table><tr><td bgcolor=“#707070”>
               v_mul_lo_u32 v2, v2, s3                                    // 000000001504: D2850002 00000702
 
               s_add_i32 s3, s2, -2                                       // 00000000150C: 8103C202
@@ -1264,7 +1264,7 @@ mem_read_latency_cycle =   647 cycles for Vega10--1.536GHz
               global_load_dword v2, v[2:3], off                          // 000000001524: DC508000 027F0002
 
               s_waitcnt vmcnt(0)  
-```
+</td></tr></table>
 2.6.2 CacheLine Length: 缓存行长度
 -----------------------------
 
@@ -1379,7 +1379,7 @@ RangeSize[    4096], kernel_time (hipEventElapsedTime) =48.065ms
 RangeSize[    4096], mem_read_latency_cycle =   239 cycles for Vega10--1.536GHz
 </td></tr></table>
 那么可以猜测L1 Cache命中延时小于239个时钟周期，用”extractkernel -i example-6c.exe”查看GCN Assembly 代码，获得主循环体代码如下：
-```
+<table><tr><td bgcolor=“#707070”>
 0000000000001170 BB0_2:
 
         s_waitcnt vmcnt(0)                                        
@@ -1409,7 +1409,7 @@ RangeSize[    4096], mem_read_latency_cycle =   239 cycles for Vega10--1.536GHz
         global_load_dword v2, v[2:3], off                        
 
         s_cbranch_scc1 BB0_2                                     
-```
+</td></tr></table>
 GCN Assembly代码总计9条VALU指令， 4条Scalar指令，这些指令的延时需要64时钟周期，考虑到由于Cacheline不对齐会损失32-60个始终周期，L1 Cache命中的延时最低100个时钟周期，最高130个时钟周期。
 
 Example-6d.cpp将rangesize修改为32768（128KB），编译执行获得如下结果。根据example-6c的分析，L2 CacheLIne命中的延时介于270-300个时钟周期之间。
@@ -1538,7 +1538,7 @@ test_kernel(hipLaunchParm lp,
 }
 ```
 编译后example.cpp并使用extractkernel发现LDS read由如下序列指令：
-```
+<table><tr><td bgcolor=“#707070”>
               v_and_b32_e32 v0, s0, v0                    
 
               v_lshlrev_b32_e32 v0, 2, v0                 
@@ -1546,7 +1546,7 @@ test_kernel(hipLaunchParm lp,
               ds_read_b32 v0, v0                               
 
               s_waitcnt lgkmcnt(0)                             
-```
+</td></tr></table>
 2条VALU指令需要20个时钟周期。执行example-9a获得如下结果，我们可以断定LDS 延时最好情况低于44个时钟周期：
 <table><tr><td bgcolor=“#707070”>
 latency for Vega10(1.536Ghz):  63 cycles
@@ -1946,7 +1946,7 @@ Read/Write [16] Channels per thread:  elapsed time:9.165571
 Read/Write [16] Channels per thread:  ==> Estimated Bandwidth 144  GB/s
 </td></tr></table>
 获得的性能非常低，远远低于480 GB/s的理论极限。 使用”extractkernels example-13.exe”获得编译后的GCN汇编程序， 发现以下奇怪代码，总共包含16条buffer_store_dword，和一条buffer_load_dword值令。
-```
+<table><tr><td bgcolor=“#707070”>
                v_mov_b32_e32 v4, 0
 
               buffer_store_dword v4, off, s[0:3], s11 offset:64
@@ -1986,7 +1986,7 @@ Read/Write [16] Channels per thread:  ==> Estimated Bandwidth 144  GB/s
               buffer_store_dword v4, v2, s[0:3], s11 offen
 
               buffer_load_dword v6, v2, s[0:3], s11 offen
-```
+</td></tr></table>
 而同时我们从以前的经验获知，HIPCC编译器通常使用global_load_dword和global_store_dwor指令读写显存数据。16条写显存指令和程序中初始化”org_data[i] =0.0f”最接近，为证实这个猜测修改为”org_data[i] =0.1111f”，“v_mov_b32_e32 v4, 0”变成了“v_mov_b32_e32 v4, 0x3de38da4”。编译器在16个org_data的初始化为0后，然后把org_data缓存到显存，然后使用时再从显存读出，这样程序的效率大大降低。 通常只有在寄存器超过256时，编译器才需要使用显存补充缺失的存储器。这个简单程序显然不需要这么多寄存器。HIPCC编译器把这块显存称为scratch（参考产生的GCN汇编程序中的scratch_hi 和 scratch_lo）。
 
          一个可能的猜测是循环变量channles_once作为输入参数出现，而编译器无法判别总的循环次数，不能判别需要org_data的实际大小，而把导致org_data被分配到scratch memory。
