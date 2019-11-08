@@ -1,4 +1,4 @@
-﻿#include <assert.h>
+#include <assert.h>
 #include <stdio.h>
 #include <algorithm>
 #include <stdlib.h>
@@ -6,48 +6,6 @@
 #include "hip/hip_runtime.h"
 #include <math.h>
 
-/*
-	This test is aimed to test the performance of Atomic function vs redution 
-	especially for batched GEMM and Convoloution Backweights when Channels are very small but H*W is very huge
-
-•	Method 1:  Per-Thread VGPR v_add_f32 function only which is the fastest one. We don’t write test for it . At least 32x32 macro-tile can be used for SGEMM and convolution .  Matrix K can be Split 16x at most
-•	Method 2:  Per-Wave LDS Reduction.   It is very fast. It has  lots of test.  We don’t care.    At least 32x32 macro-tile can be used for SGEMM and convolution.   Matrix K can be Split 16x at most
-o	Workgroup size 256
-o	Real  Macro-tile size 32x32 , faked macro tile size 128x128
-o	Split K = 16
-o	Every thread does 4x4 result C.  Every thread has  4x K
-o	Every 4 Threads have 4x4 K =  Split K = 16
-o	It still has 128x128 faked macro-tile size
-
-•	Method 3:  Using Atomic_add_int to simulate the atomic_float function in MI-100
-•	Method4:   Using Hip function atomic_add_float in ROCm HIP.   Actually  it uses while loop and global_load_buffer,  and atomic_cmpexchange
-inline void AtomicAdd(volatile __global float *source, const float operand) {
-	union {
-		unsigned int intVal;
-		float floatVal;
-	} newVal;
-	union {
-		unsigned int intVal;
-		float floatVal;
-	} prevVal;
-	do {
-		prevVal.floatVal = *source;
-		newVal.floatVal = prevVal.floatVal + operand;
-	} while (atomic_cmpxchg((volatile __global unsigned int *)source,
-							 prevVal.intVal, newVal.intVal)
-							 != prevVal.intVal);
-o	}
-•	Method 5: Assuming that No hardware atomic function supported.
-Use 2 Passes for BatchGEMM or convolution. For example,  1st Kernel outputs split-K result into 64x temp buffer.  2nd kernel loads 64 Matrix C and sums up into final buffer.
-	   for (int i = 0; i < Redcutions; i++)
-	   {
-			  result += srcdata[globalIdx + total_length];
-	   }
-
-	   dstdata[globalIdx] = result;
-
-
-*/
 
 #define HIP_ASSERT(x) (assert((x)==hipSuccess))
 
@@ -149,7 +107,8 @@ void test(unsigned int k=512, int c=512, int h=3, int w=3)
 
 	int errors;
 
-	hostA = (float*)malloc(A_NUM * sizeof(float));
+	//hostA = (float*)malloc(A_NUM * sizeof(float));
+	hipHostMalloc((void**)& hostA, A_NUM * sizeof(float));
 	hostB = (float*)malloc(B_NUM * sizeof(float));
 	hostC = (float*)malloc(C_NUM * sizeof(float));
 
@@ -164,6 +123,7 @@ void test(unsigned int k=512, int c=512, int h=3, int w=3)
 	float* deviceC;
 
 	cout << "host allocated \n";
+	
 	HIP_ASSERT(hipMalloc((void**)& deviceA, A_NUM * sizeof(float)));
 	HIP_ASSERT(hipMalloc((void**)& deviceB, B_NUM * sizeof(float)));
 	HIP_ASSERT(hipMalloc((void**)& deviceC, C_NUM * sizeof(float)));
@@ -175,6 +135,39 @@ void test(unsigned int k=512, int c=512, int h=3, int w=3)
 	HIP_ASSERT(hipMemcpy(deviceC, hostC, C_NUM * sizeof(float), hipMemcpyHostToDevice));
 
 	cout << "Host to Device Copied\n";
+
+
+	{
+		int localThreads = 256;
+		int gloal_blocks = (inlength + localThreads - 1) / localThreads;
+
+		hipLaunchKernel(convert_nhwc_to_nchw<512, 512, 3, 3>,
+			dim3(gloal_blocks),
+			dim3(localThreads),
+			0, 0,
+			hostA, deviceB);
+
+		hipEventRecord(start, NULL);
+
+		int  iterations = 10;
+
+		for (int i = 0; i < iterations; i++)
+		{
+			hipLaunchKernel(convert_nhwc_to_nchw<512, 512, 3, 3>,
+				dim3(gloal_blocks),
+				dim3(localThreads),
+				0, 0,
+				hostA, deviceB);
+		}
+
+		hipEventRecord(stop, NULL);
+		hipEventSynchronize(stop);
+		hipEventElapsedTime(&eventMs, start, stop);
+
+		float bandwidth = float(inlength) * 1 / 1e9;
+		bandwidth = bandwidth / (eventMs / iterations / 1000.0);
+		printf("Shuffle_simple : host A, Inlen:[%d], costs %f millseconds ,  Bandwidth = %f Giga Data/s\n", inlength, eventMs / iterations, bandwidth);
+	}
 
 	{
 		int localThreads = 256;
@@ -250,7 +243,8 @@ void test(unsigned int k=512, int c=512, int h=3, int w=3)
 	HIP_ASSERT(hipFree(deviceC));
 
 
-	free(hostA);
+	//free(hostA);
+	hipFree(hostA);
 	free(hostB);
 	free(hostC);
 
