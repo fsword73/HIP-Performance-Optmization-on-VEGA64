@@ -62,7 +62,7 @@ __global__ void  convert_nhwc_to_nchw_optimized(hipLaunchParm lp, float* source,
 			shared_data[shared_idx] = source[soruce_idx];
 		}
 
-
+	__syncthreads();
 	//Scatter 256xH*W to different thread
 	int tile_c_offset = c & (~0xff); 
 	int dest_base = k * CC * HH * WW + tile_c_offset * HH * WW + hipThreadIdx_x;
