@@ -63,6 +63,8 @@ __global__ void  convert_nhwc_to_nchw_optimized(hipLaunchParm lp, float* source,
 		}
 
 	__syncthreads();
+
+	
 	//Scatter 256xH*W to different thread
 	int tile_c_offset = c & (~0xff); 
 	int dest_base = k * CC * HH * WW + tile_c_offset * HH * WW + hipThreadIdx_x;
@@ -70,15 +72,17 @@ __global__ void  convert_nhwc_to_nchw_optimized(hipLaunchParm lp, float* source,
 	for (int i = 0; i < HH; i++)
 		for (int j = 0; j < WW; j++)
 		{
-			shared_Idx2 += 256 ;
-			dest_base += 256;
 			dest[dest_base] = shared_data[shared_Idx2];
+			shared_Idx2 += 256;
+			dest_base += 256;
 		}
 }
 
 using namespace std;
 
-void test(unsigned int k=512, int c=512, int h=3, int w=3)
+#define KC_VAL  4096
+
+void test(unsigned int k= KC_VAL, int c= KC_VAL, int h=3, int w=3)
 {
 	int inlength = k * c * h * w;
 	unsigned int  A_NUM = inlength;
@@ -141,7 +145,7 @@ void test(unsigned int k=512, int c=512, int h=3, int w=3)
 		int localThreads = 256;
 		int gloal_blocks = (inlength + localThreads - 1) / localThreads;
 
-		hipLaunchKernel(convert_nhwc_to_nchw<512, 512, 3, 3>,
+		hipLaunchKernel(convert_nhwc_to_nchw<KC_VAL, KC_VAL, 3, 3>,
 			dim3(gloal_blocks),
 			dim3(localThreads),
 			0, 0,
@@ -153,7 +157,7 @@ void test(unsigned int k=512, int c=512, int h=3, int w=3)
 
 		for (int i = 0; i < iterations; i++)
 		{
-			hipLaunchKernel(convert_nhwc_to_nchw<512, 512, 3, 3>,
+			hipLaunchKernel(convert_nhwc_to_nchw<KC_VAL, KC_VAL, 3, 3>,
 				dim3(gloal_blocks),
 				dim3(localThreads),
 				0, 0,
@@ -173,7 +177,7 @@ void test(unsigned int k=512, int c=512, int h=3, int w=3)
 		int localThreads = 256;
 		int gloal_blocks = (inlength + localThreads -1) / localThreads;
 
-		hipLaunchKernel(convert_nhwc_to_nchw<512,512,3,3>,
+		hipLaunchKernel(convert_nhwc_to_nchw<KC_VAL, KC_VAL,3,3>,
 			dim3(gloal_blocks),
 			dim3(localThreads),
 			0, 0,
@@ -185,7 +189,7 @@ void test(unsigned int k=512, int c=512, int h=3, int w=3)
 		
 		for (int i = 0; i < iterations; i++)
 		{
-			hipLaunchKernel(convert_nhwc_to_nchw<512, 512, 3, 3>,
+			hipLaunchKernel(convert_nhwc_to_nchw<KC_VAL, KC_VAL, 3, 3>,
 				dim3(gloal_blocks),
 				dim3(localThreads),
 				0, 0,
@@ -207,7 +211,7 @@ void test(unsigned int k=512, int c=512, int h=3, int w=3)
 		//9*256 once
 		int gloal_blocks = (inlength/9 + localThreads - 1) / localThreads;
 
-		hipLaunchKernel(convert_nhwc_to_nchw_optimized<512, 512, 3, 3>,
+		hipLaunchKernel(convert_nhwc_to_nchw_optimized<KC_VAL, KC_VAL, 3, 3>,
 			dim3(gloal_blocks),
 			dim3(localThreads),
 			0, 0,
@@ -219,7 +223,7 @@ void test(unsigned int k=512, int c=512, int h=3, int w=3)
 
 		for (int i = 0; i < iterations; i++)
 		{
-			hipLaunchKernel(convert_nhwc_to_nchw_optimized<512, 512, 3, 3>,
+			hipLaunchKernel(convert_nhwc_to_nchw_optimized<KC_VAL, KC_VAL, 3, 3>,
 				dim3(gloal_blocks),
 				dim3(localThreads),
 				0, 0,
