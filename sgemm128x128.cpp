@@ -11,7 +11,7 @@
 
 #define M    4096
 #define N    4096
-#define K    4096
+#define K    (4096+128)
 
 #define NUM       (M*K)
 
@@ -58,6 +58,7 @@ __global__ void sgemm_nt_128x128(const float* a, const float* b, float* __restri
       }
   }  
 }
+
 
 __global__ void sgemm_nt_128x128_unroll2(const float* a, const float* b, float* __restrict__ c, const int m, const int n, const int k ){
   int wk_tile_m =  hipBlockIdx_y * 128 ;
@@ -186,6 +187,67 @@ __global__ void sgemm_nt_128x128_lds_unorll8(const float* a, const float* b, flo
   }  
 }
 
+/*
+Matrix A: M * K 
+Matrix B: Transposed N * K 
+Matrix C: M * N  
+Workgroup TILE SIZE:  96 * 128
+Thread    TILE SIZE:  6 * 8    
+Deal with Right , bottom 
+*/
+__global__ void sgemm_nt_96x128(const float* a, const float* b, float* __restrict__ c, const int m, const int n, const int k ){
+  int wk_tile_m =  hipBlockIdx_y * 96 ;
+  int wk_tile_n =  hipBlockIdx_x * 128 ;
+  int thread_tile_m = wk_tile_m + hipThreadIdx_y * 6;
+  int thread_tile_n = wk_tile_n + hipThreadIdx_x * 8;
+
+  float sum[6][8];
+
+  for(int i=0; i < 6; i++){
+      for(int j=0; j < 8; j++){
+        sum[i][j] = 0;
+      }
+  }
+
+  for(int kk=0; kk < k; kk++) {
+      float adata[6];
+      float bdata[8];
+
+      for(int i=0; i < 6; i++) {
+        if( (thread_tile_m + i) < m){
+         adata[i] = a[( thread_tile_m + i)* k +kk];
+        }
+        else
+        {
+          adata[i] = 0;
+        }
+      }
+      for(int i=0; i < 8; i++) {
+        if(( thread_tile_n + i) < n){
+         bdata[i] = b[( thread_tile_n + i) *k +kk];
+        }
+        else{
+          bdata[i] = 0;
+        }
+      }     
+
+      for(int i=0; i <6; i++){
+          for(int j=0; j <8; j++){
+             sum[i][j] += adata[i] * bdata[j]; 
+          }
+      }
+  } 
+
+  //store   
+  for(int i=0; i < 6; i++){
+      for(int j=0; j < 8; j++){
+          if((thread_tile_m + i) < m && (thread_tile_n+ j) < n){
+              c[ (thread_tile_m + i) * n + thread_tile_n + j] = sum[i][j];
+          }
+      }
+  }  
+}
+
 
 using namespace std;
 
@@ -309,6 +371,36 @@ int main() {
         {
           hipLaunchKernelGGL(sgemm_nt_128x128_lds_unorll8, 
                         dim3(M/128, N/128 ),
+                        dim3(THREADS_PER_BLOCK_X, THREADS_PER_BLOCK_Y),
+                        0, 0,
+                        deviceA ,deviceB ,deviceC, M, N, K);
+        }
+
+          hipEventRecord(stop, NULL);
+          hipEventSynchronize(stop);
+
+          hipEventElapsedTime(&eventMs, start, stop);
+   
+		      //printf("elapsed time:%f\n", eventMs);
+          double ips = ( double)(M)*( double)N*( double)K /1024/1024/1024;
+		      ips = ips / ( double)eventMs * 1000 ;
+		      printf("sgemm_nt_128x128_lds_unorll8 ==> %lf G FMAs/s, ms: %f\n", ips, eventMs);
+
+   }
+
+   if(1)
+   {
+          hipLaunchKernelGGL(sgemm_nt_96x128,
+                        dim3((M+96-1)/96, (N+128-1)/128 ),
+                        dim3(THREADS_PER_BLOCK_X, THREADS_PER_BLOCK_Y),
+                        0, 0,
+                        deviceA ,deviceB ,deviceC, M, N, K);
+
+          hipEventRecord(start, NULL);
+        for (int i = 0; i < 1; i++)
+        {
+          hipLaunchKernelGGL(sgemm_nt_96x128,
+                        dim3((M+96-1)/96, (N+128-1)/128 ),
                         dim3(THREADS_PER_BLOCK_X, THREADS_PER_BLOCK_Y),
                         0, 0,
                         deviceA ,deviceB ,deviceC, M, N, K);
