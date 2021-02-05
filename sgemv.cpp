@@ -10,7 +10,7 @@
 
 
 #define M    32768
-#define N    (4096)
+#define N    (8192+256)
 
 #define NUM       (M*N)
 
@@ -516,7 +516,7 @@ int main() {
                         deviceA ,deviceB ,deviceC, M, N, N);
 
           hipEventRecord(start, NULL);
-        for (int i = 0; i < 1; i++)
+        for (int i = 0; i < 10; i++)
         {
           hipLaunchKernelGGL(sgemv_16x1, 
                         dim3(M/16 ),
@@ -533,7 +533,7 @@ int main() {
 		      //printf("elapsed time:%f\n", eventMs);
           double total_bytes = ( double)(M)* (double)N + double(M) + double(N);          
           total_bytes = total_bytes * sizeof(float) /1024/1024/1024;
-		      double gbps = total_bytes/eventMs * 1000;
+		      double gbps = total_bytes/eventMs * 1000 * 10;
 		      printf("sgemv_16x1 ==> %lf G Bytes/s, ms: %f\n", gbps, eventMs);
    }
 
@@ -546,7 +546,7 @@ int main() {
                         deviceA ,deviceB ,deviceC, M, N, N);
 
           hipEventRecord(start, NULL);
-        for (int i = 0; i < 1; i++)
+        for (int i = 0; i < 10; i++)
         {
           hipLaunchKernelGGL(sgemv_8x1, 
                         dim3(mm/8 ),
@@ -563,10 +563,11 @@ int main() {
 		      //printf("elapsed time:%f\n", eventMs);
           double total_bytes = ( double)(mm)* (double)N + double(mm) + double(N);          
           total_bytes = total_bytes * sizeof(float) /1024/1024/1024;
-		      double gbps = total_bytes/eventMs * 1000;
-		      printf("sgemv_8x1 ==> %lf G Bytes/s, ms: %f\n", gbps, eventMs);
+		      double gbps = total_bytes/eventMs * 1000 * 10;
+		      printf("sgemv_8x1 [mm=%d] ==> %lf G Bytes/s, ms: %f\n", mm, gbps, eventMs);
    }
 
+  exit(0);
    for(int mm=1024; mm <=M; mm+=256){
         hipLaunchKernelGGL(sgemv_direct_64x1_t1x1, 
                         dim3(mm/64 ),
