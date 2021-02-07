@@ -9,9 +9,9 @@
 #define HIP_ASSERT(x) (assert((x)==hipSuccess))
 
 
-#define M    4096
+#define M    8192
 #define N    (4096)
-#define NN   (8192+32)
+#define NN   (4096+32)
 
 #define NUM       (M*NN)
 
@@ -415,14 +415,15 @@ __global__ void sgemv_4x1(const float* a, const float* b, float* __restrict__ c,
     //every time reduce 8 value
     //Thread 0-7  reduce SUM[0] 
     //Thread 8-15 reduce SUM[1] 
-    //...
-    //Thread 56,63 reduce SUM[7]
+    //Thread 15-23  reduce SUM[0] 
+    //Thread 24-31 reduce SUM[1] 
   
     int s_read_offset  = (hipThreadIdx_x >> 3) * THREADS_PER_BLOCK_X + (hipThreadIdx_x&0x7) * 8;
     int s_write_offset = hipThreadIdx_x;
 
     __syncthreads();
     //__syncthreads 8 SUM by 64 threads 
+    if( hipThreadIdx_x < 32) {
     s_sum[s_write_offset]  =  s_sum[s_read_offset + 0] +
                               s_sum[s_read_offset + 1] +  
                               s_sum[s_read_offset + 2] +  
@@ -432,13 +433,13 @@ __global__ void sgemv_4x1(const float* a, const float* b, float* __restrict__ c,
                               s_sum[s_read_offset + 6] +  
                               s_sum[s_read_offset + 7]
                               ;  
+    }
     
     __syncthreads();
     
     //first 8 threads reduces 8x data 
     if( hipThreadIdx_x < BLOCK_C_TILE_X){
         s_read_offset = hipThreadIdx_x  * 8;
-
         sum[0] = s_sum[s_read_offset + 0] + 
                  s_sum[s_read_offset + 1] +  
                  s_sum[s_read_offset + 2] + 
@@ -570,14 +571,13 @@ __global__ void sgemv_2x1(const float* a, const float* b, float* __restrict__ c,
     //every time reduce 8 value
     //Thread 0-7  reduce SUM[0] 
     //Thread 8-15 reduce SUM[1] 
-    //...
-    //Thread 56,63 reduce SUM[7]
   
     int s_read_offset  = (hipThreadIdx_x >> 3) * THREADS_PER_BLOCK_X + (hipThreadIdx_x&0x7) * 8;
     int s_write_offset = hipThreadIdx_x;
 
     __syncthreads();
     //__syncthreads 8 SUM by 64 threads 
+    if( hipThreadIdx_x < 16) {
     s_sum[s_write_offset]  =  s_sum[s_read_offset + 0] +
                               s_sum[s_read_offset + 1] +  
                               s_sum[s_read_offset + 2] +  
@@ -587,6 +587,7 @@ __global__ void sgemv_2x1(const float* a, const float* b, float* __restrict__ c,
                               s_sum[s_read_offset + 6] +  
                               s_sum[s_read_offset + 7]
                               ;  
+    }
     
     __syncthreads();
     
