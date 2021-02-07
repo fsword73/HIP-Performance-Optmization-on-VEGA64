@@ -9,10 +9,11 @@
 #define HIP_ASSERT(x) (assert((x)==hipSuccess))
 
 
-#define M    32768
-#define N    (8192+256)
+#define M    16384
+#define N    (8192)
+#define NN   (8192+32)
 
-#define NUM       (M*N)
+#define NUM       (M*NN)
 
 #define THREADS_PER_BLOCK_X  64
 #define THREADS_PER_BLOCK_Y  1
@@ -190,14 +191,16 @@ __global__ void sgemv_8x1(const float* a, const float* b, float* __restrict__ c,
         offset +=  BLOCK_LOAD_NUM;
     }
 #else 
-    for(int i =0; i < n;  i+= BLOCK_LOAD_NUM*2  ) {
+    //4x FMA per M per Thread 
+    //32 FMA per 8M per threads
+    //256 FMA per M per workgroup
+    for(int i =0; i < n;  i+= BLOCK_LOAD_NUM  ) {
         //LOAD B
         float b_data[THREAD_LOAD_NUM]; 
 
         //Matrix B: 4x1 per thread
         for(int j=0; j < THREAD_LOAD_NUM; j++)
             b_data[j] = b[offset+j]; 
-
 
         //Matrix A: 16X4 per thread,
 #pragma unroll        
@@ -216,6 +219,9 @@ __global__ void sgemv_8x1(const float* a, const float* b, float* __restrict__ c,
 
         //Move offset 
         offset +=  BLOCK_LOAD_NUM;
+
+
+#if 0        
         //Matrix B: 4x1 per thread
         for(int j=0; j < THREAD_LOAD_NUM; j++)
             b_data[j] = b[offset+j]; 
@@ -234,7 +240,9 @@ __global__ void sgemv_8x1(const float* a, const float* b, float* __restrict__ c,
                 //SUM A
                 sum[j] += a_data[k] * b_data[k];
             }
-        }      
+        }
+        offset +=  BLOCK_LOAD_NUM;      
+#endif        
     }
 #endif    
 
@@ -507,13 +515,13 @@ int main() {
 	float eventMs = 0.0f;
   
    
-   if(1)
+   for(int mm=512; mm <=M; mm+=256)
    {
           hipLaunchKernelGGL(sgemv_16x1, 
                         dim3(M/16 ),
                         dim3(THREADS_PER_BLOCK_X),
                         0, 0,
-                        deviceA ,deviceB ,deviceC, M, N, N);
+                        deviceA ,deviceB ,deviceC, M, N, NN);
 
           hipEventRecord(start, NULL);
         for (int i = 0; i < 10; i++)
@@ -522,7 +530,7 @@ int main() {
                         dim3(M/16 ),
                         dim3(THREADS_PER_BLOCK_X),
                         0, 0,
-                        deviceA ,deviceB ,deviceC, M, N, N);
+                        deviceA ,deviceB ,deviceC, M, N, NN);
         }
 
           hipEventRecord(stop, NULL);
@@ -531,19 +539,19 @@ int main() {
           hipEventElapsedTime(&eventMs, start, stop);
    
 		      //printf("elapsed time:%f\n", eventMs);
-          double total_bytes = ( double)(M)* (double)N + double(M) + double(N);          
+          double total_bytes = ( double)(mm)* (double)N + double(mm) + double(N);          
           total_bytes = total_bytes * sizeof(float) /1024/1024/1024;
 		      double gbps = total_bytes/eventMs * 1000 * 10;
-		      printf("sgemv_16x1 ==> %lf G Bytes/s, ms: %f\n", gbps, eventMs);
+		      printf("sgemv_16x1 [mm=%d] ==> %lf G Bytes/s, ms: %f\n", mm, gbps, eventMs);
    }
 
-   for(int mm=1024; mm <=M; mm+=256)
+   for(int mm=512; mm <=M; mm+=256)
    {
           hipLaunchKernelGGL(sgemv_8x1, 
                         dim3(mm/8 ),
                         dim3(THREADS_PER_BLOCK_X),
                         0, 0,
-                        deviceA ,deviceB ,deviceC, M, N, N);
+                        deviceA ,deviceB ,deviceC, M, N, NN);
 
           hipEventRecord(start, NULL);
         for (int i = 0; i < 10; i++)
@@ -552,7 +560,7 @@ int main() {
                         dim3(mm/8 ),
                         dim3(THREADS_PER_BLOCK_X),
                         0, 0,
-                        deviceA ,deviceB ,deviceC, M, N, N);
+                        deviceA ,deviceB ,deviceC, M, N, NN);
         }
 
           hipEventRecord(stop, NULL);
@@ -567,7 +575,7 @@ int main() {
 		      printf("sgemv_8x1 [mm=%d] ==> %lf G Bytes/s, ms: %f\n", mm, gbps, eventMs);
    }
 
-  exit(0);
+  //exit(0);
    for(int mm=1024; mm <=M; mm+=256){
         hipLaunchKernelGGL(sgemv_direct_64x1_t1x1, 
                         dim3(mm/64 ),
@@ -576,12 +584,12 @@ int main() {
                         deviceA ,deviceB ,deviceC, M, N, N);
 
         hipEventRecord(start, NULL);
-        for (int i = 0; i < 1; i++){
+        for (int i = 0; i < 10; i++){
           hipLaunchKernelGGL(sgemv_direct_64x1_t1x1, 
                         dim3(mm/64),
                         dim3(64),
                         0, 0,
-                        deviceA ,deviceB ,deviceC, M, N, N);
+                        deviceA ,deviceB ,deviceC, M, N, NN);
 
         }
 
@@ -593,7 +601,7 @@ int main() {
         //printf("elapsed time:%f\n", eventMs);
         float total_bytes = ( double)(mm)* (double)N + double(N) + double(mm);          
         total_bytes = total_bytes * sizeof(float) /1024/1024/1024;
-        float gbps = total_bytes/eventMs * 1000 * 1;
+        float gbps = total_bytes/eventMs * 1000 * 10;
         printf("sgemv_64x1_t1x1 [m=%d]==> %lf G Bytes/s, ms: %f\n", mm, gbps, eventMs);
    }
 
@@ -606,12 +614,12 @@ int main() {
                         deviceA ,deviceB ,deviceC, M, N, N);
 
         hipEventRecord(start, NULL);
-        for (int i = 0; i < 1; i++){
+        for (int i = 0; i < 10; i++){
           hipLaunchKernelGGL(sgemv_direct_64x1_t8x1, 
                         dim3(mm/64),
                         dim3(64),
                         0, 0,
-                        deviceA ,deviceB ,deviceC, M, N, N);
+                        deviceA ,deviceB ,deviceC, M, N, NN);
 
         }
 
@@ -623,7 +631,7 @@ int main() {
         //printf("elapsed time:%f\n", eventMs);
         float total_bytes = ( double)(mm)* (double)N + double(N) + double(mm);          
         total_bytes = total_bytes * sizeof(float) /1024/1024/1024;
-        float gbps = total_bytes/eventMs * 1000 * 1;
+        float gbps = total_bytes/eventMs * 1000 * 10;
         printf("sgemv_64x1_t8x1 [m=%d]==> %lf G Bytes/s, ms: %f\n", mm, gbps, eventMs);
    }
 
