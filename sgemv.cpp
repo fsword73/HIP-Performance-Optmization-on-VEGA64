@@ -39,7 +39,7 @@
 #define  BLOCK_C_TILE_X 16
 #define THREAD_LOAD_NUM  4 
 #define BLOCK_LOAD_NUM  (THREAD_LOAD_NUM * THREADS_PER_BLOCK_X)
-__global__ void sgemv_16x1(const float* a, const float* b, float* __restrict__ c, const int m, const int n, const int lda ){
+__global__ void sgemv_16x1_t16x4x1(const float* a, const float* b, float* __restrict__ c, const int m, const int n, const int lda ){
     int wk_tile_m =  hipBlockIdx_x * BLOCK_C_TILE_X ;
     
     int offset = hipThreadIdx_x * THREAD_LOAD_NUM;
@@ -152,7 +152,7 @@ __global__ void sgemv_16x1(const float* a, const float* b, float* __restrict__ c
 #define  BLOCK_C_TILE_X 8
 #define THREAD_LOAD_NUM  4 
 #define BLOCK_LOAD_NUM  (THREAD_LOAD_NUM * THREADS_PER_BLOCK_X)
-__global__ void sgemv_8x1(const float* a, const float* b, float* __restrict__ c, const int m, const int n, const int lda ){
+__global__ void sgemv_8x1_t8x4x1(const float* a, const float* b, float* __restrict__ c, const int m, const int n, const int lda ){
     int wk_tile_m =  hipBlockIdx_x * BLOCK_C_TILE_X ;
     
     int offset = hipThreadIdx_x * THREAD_LOAD_NUM;
@@ -306,7 +306,7 @@ __global__ void sgemv_8x1(const float* a, const float* b, float* __restrict__ c,
 #define  BLOCK_C_TILE_X 8
 #define THREAD_LOAD_NUM  2
 #define BLOCK_LOAD_NUM  (THREAD_LOAD_NUM * THREADS_PER_BLOCK_X)
-__global__ void sgemv_8x1_t2x1(const float* a, const float* b, float* __restrict__ c, const int m, const int n, const int lda ){
+__global__ void sgemv_8x1_t8x2x1(const float* a, const float* b, float* __restrict__ c, const int m, const int n, const int lda ){
     int wk_tile_m =  hipBlockIdx_x * BLOCK_C_TILE_X ;
     
     int offset = hipThreadIdx_x * THREAD_LOAD_NUM;
@@ -461,7 +461,7 @@ __global__ void sgemv_8x1_t2x1(const float* a, const float* b, float* __restrict
 #define  BLOCK_C_TILE_X 8
 #define THREAD_LOAD_NUM  1 
 #define BLOCK_LOAD_NUM  (THREAD_LOAD_NUM * THREADS_PER_BLOCK_X)
-__global__ void sgemv_8x1_t1x1(const float* a, const float* b, float* __restrict__ c, const int m, const int n, const int lda ){
+__global__ void sgemv_8x1_t8x1x1(const float* a, const float* b, float* __restrict__ c, const int m, const int n, const int lda ){
     int wk_tile_m =  hipBlockIdx_x * BLOCK_C_TILE_X ;
     
     int offset = hipThreadIdx_x * THREAD_LOAD_NUM;
@@ -773,7 +773,7 @@ __global__ void sgemv_4x1(const float* a, const float* b, float* __restrict__ c,
 #define  BLOCK_C_TILE_X  2
 #define THREAD_LOAD_NUM  4 
 #define BLOCK_LOAD_NUM  (THREAD_LOAD_NUM * THREADS_PER_BLOCK_X)
-__global__ void sgemv_2x1(const float* a, const float* b, float* __restrict__ c, const int m, const int n, const int lda ){
+__global__ void sgemv_2x1_t2x4x1(const float* a, const float* b, float* __restrict__ c, const int m, const int n, const int lda ){
     int wk_tile_m =  hipBlockIdx_x * BLOCK_C_TILE_X ;
     
     int offset = hipThreadIdx_x * THREAD_LOAD_NUM;
@@ -922,7 +922,7 @@ __global__ void sgemv_2x1(const float* a, const float* b, float* __restrict__ c,
     }
 }
 
-__global__ void sgemv_direct_64x1_t1x1(const float* a, const float* b, float* __restrict__ c, const int m, const int n, const int lda ){    
+__global__ void sgemv_direct_64x1_t1x64x1(const float* a, const float* b, float* __restrict__ c, const int m, const int n, const int lda ){    
     int gid = hipBlockIdx_x * 64 + hipThreadIdx_x;
     int thread_offset =  gid *lda;
     //NO Preload     
@@ -956,7 +956,7 @@ __global__ void sgemv_direct_64x1_t1x1(const float* a, const float* b, float* __
 //Thread 7:  8* 4 * 1    offset N 28
 
 
-__global__ void sgemv_direct_64x1_t8x1(const float* a, const float* b, float* __restrict__ c, const int m, const int n, const int lda ){    
+__global__ void sgemv_direct_64x1_t8x4x1(const float* a, const float* b, float* __restrict__ c, const int m, const int n, const int lda ){    
     int gid = hipBlockIdx_x * 64 + ((hipThreadIdx_x >> 3) * 8);
     int thread_offset =  gid *lda + (hipThreadIdx_x & 0x7) * 4;
     //NO Preload     
@@ -1019,7 +1019,7 @@ __global__ void sgemv_direct_64x1_t8x1(const float* a, const float* b, float* __
 //Thread 31:  8* 4 * 1  offset N： 124 
 //128x of Matrix B per loop
 
-__global__ void sgemv_direct_16x1_t8x1(const float* a, const float* b, float* __restrict__ c, const int m, const int n, const int lda ){    
+__global__ void sgemv_direct_16x1_t8x4x1(const float* a, const float* b, float* __restrict__ c, const int m, const int n, const int lda ){    
     int gid = hipBlockIdx_x * 16 + ((hipThreadIdx_x >> 5) * 8);
     int thread_offset =  gid *lda + (hipThreadIdx_x &0x1f) * 4 ;
     //NO Preload     
@@ -1138,7 +1138,7 @@ int main() {
    
    for(int mm=512; mm <=M; mm+=256)
    {
-          hipLaunchKernelGGL(sgemv_16x1, 
+          hipLaunchKernelGGL(sgemv_16x1_t16x4x1, 
                         dim3(M/16 ),
                         dim3(THREADS_PER_BLOCK_X),
                         0, 0,
@@ -1147,7 +1147,7 @@ int main() {
           hipEventRecord(start, NULL);
         for (int i = 0; i < 10; i++)
         {
-          hipLaunchKernelGGL(sgemv_16x1, 
+          hipLaunchKernelGGL(sgemv_16x1_t16x4x1, 
                         dim3(M/16 ),
                         dim3(THREADS_PER_BLOCK_X),
                         0, 0,
@@ -1163,12 +1163,12 @@ int main() {
           double total_bytes = ( double)(mm)* (double)N + double(mm) + double(N);          
           total_bytes = total_bytes * sizeof(float) /1024/1024/1024;
 		      double gbps = total_bytes/eventMs * 1000 * 10;
-		      printf("sgemv_16x1 [mm=%d] ==> %lf G Bytes/s, ms: %f\n", mm, gbps, eventMs);
+		      printf("sgemv_16x1_t16x4x1 [mm=%d] ==> %lf G Bytes/s, ms: %f\n", mm, gbps, eventMs);
    }
 
    for(int mm=512; mm <=M; mm+=256)
    {
-          hipLaunchKernelGGL(sgemv_8x1, 
+          hipLaunchKernelGGL(sgemv_8x1_t8x4x1, 
                         dim3(mm/8 ),
                         dim3(THREADS_PER_BLOCK_X),
                         0, 0,
@@ -1177,7 +1177,7 @@ int main() {
           hipEventRecord(start, NULL);
         for (int i = 0; i < 10; i++)
         {
-          hipLaunchKernelGGL(sgemv_8x1, 
+          hipLaunchKernelGGL(sgemv_8x1_t8x4x1, 
                         dim3(mm/8 ),
                         dim3(THREADS_PER_BLOCK_X),
                         0, 0,
@@ -1193,12 +1193,12 @@ int main() {
           double total_bytes = ( double)(mm)* (double)N + double(mm) + double(N);          
           total_bytes = total_bytes * sizeof(float) /1024/1024/1024;
 		      double gbps = total_bytes/eventMs * 1000 * 10;
-		      printf("sgemv_8x1 [mm=%d] ==> %lf G Bytes/s, ms: %f\n", mm, gbps, eventMs);
+		      printf("sgemv_8x1_t8x4x1 [mm=%d] ==> %lf G Bytes/s, ms: %f\n", mm, gbps, eventMs);
    }
 
    for(int mm=512; mm <=M; mm+=256)
    {
-          hipLaunchKernelGGL(sgemv_8x1_t2x1, 
+          hipLaunchKernelGGL(sgemv_8x1_t8x2x1, 
                         dim3(mm/8 ),
                         dim3(THREADS_PER_BLOCK_X),
                         0, 0,
@@ -1207,7 +1207,7 @@ int main() {
           hipEventRecord(start, NULL);
         for (int i = 0; i < 10; i++)
         {
-          hipLaunchKernelGGL(sgemv_8x1_t2x1, 
+          hipLaunchKernelGGL(sgemv_8x1_t8x2x1, 
                         dim3(mm/8 ),
                         dim3(THREADS_PER_BLOCK_X),
                         0, 0,
@@ -1223,43 +1223,13 @@ int main() {
           double total_bytes = ( double)(mm)* (double)N + double(mm) + double(N);          
           total_bytes = total_bytes * sizeof(float) /1024/1024/1024;
 		      double gbps = total_bytes/eventMs * 1000 * 10;
-		      printf("sgemv_8x1_t2x1 [mm=%d] ==> %lf G Bytes/s, ms: %f\n", mm, gbps, eventMs);
+		      printf("sgemv_8x1_t8x2x1 [mm=%d] ==> %lf G Bytes/s, ms: %f\n", mm, gbps, eventMs);
    }
 
 
    for(int mm=512; mm <=M; mm+=256)
    {
-          hipLaunchKernelGGL(sgemv_4x1, 
-                        dim3(mm/4 ),
-                        dim3(THREADS_PER_BLOCK_X),
-                        0, 0,
-                        deviceA ,deviceB ,deviceC, M, N, NN);
-
-          hipEventRecord(start, NULL);
-        for (int i = 0; i < 10; i++)
-        {
-          hipLaunchKernelGGL(sgemv_4x1, 
-                        dim3(mm/4 ),
-                        dim3(THREADS_PER_BLOCK_X),
-                        0, 0,
-                        deviceA ,deviceB ,deviceC, M, N, NN);
-        }
-
-          hipEventRecord(stop, NULL);
-          hipEventSynchronize(stop);
-
-          hipEventElapsedTime(&eventMs, start, stop);
-   
-		      //printf("elapsed time:%f\n", eventMs);
-          double total_bytes = ( double)(mm)* (double)N + double(mm) + double(N);          
-          total_bytes = total_bytes * sizeof(float) /1024/1024/1024;
-		      double gbps = total_bytes/eventMs * 1000 * 10;
-		      printf("sgemv_4x1 [mm=%d] ==> %lf G Bytes/s, ms: %f\n", mm, gbps, eventMs);
-   }
-
-   for(int mm=512; mm <=M; mm+=256)
-   {
-          hipLaunchKernelGGL(sgemv_8x1_t2x1, 
+          hipLaunchKernelGGL(sgemv_8x1_t8x1x1, 
                         dim3(mm/8 ),
                         dim3(THREADS_PER_BLOCK_X),
                         0, 0,
@@ -1268,7 +1238,7 @@ int main() {
           hipEventRecord(start, NULL);
         for (int i = 0; i < 10; i++)
         {
-          hipLaunchKernelGGL(sgemv_8x1_t2x1, 
+          hipLaunchKernelGGL(sgemv_8x1_t8x1x1, 
                         dim3(mm/8 ),
                         dim3(THREADS_PER_BLOCK_X),
                         0, 0,
@@ -1284,39 +1254,10 @@ int main() {
           double total_bytes = ( double)(mm)* (double)N + double(mm) + double(N);          
           total_bytes = total_bytes * sizeof(float) /1024/1024/1024;
 		      double gbps = total_bytes/eventMs * 1000 * 10;
-		      printf("sgemv_8x1_t2x1 [mm=%d] ==> %lf G Bytes/s, ms: %f\n", mm, gbps, eventMs);
+		      printf("sgemv_8x1_t8x1x1 [mm=%d] ==> %lf G Bytes/s, ms: %f\n", mm, gbps, eventMs);
    }
 
-   for(int mm=512; mm <=M; mm+=256)
-   {
-          hipLaunchKernelGGL(sgemv_8x1_t1x1, 
-                        dim3(mm/8 ),
-                        dim3(THREADS_PER_BLOCK_X),
-                        0, 0,
-                        deviceA ,deviceB ,deviceC, M, N, NN);
-
-          hipEventRecord(start, NULL);
-        for (int i = 0; i < 10; i++)
-        {
-          hipLaunchKernelGGL(sgemv_8x1_t1x1, 
-                        dim3(mm/8 ),
-                        dim3(THREADS_PER_BLOCK_X),
-                        0, 0,
-                        deviceA ,deviceB ,deviceC, M, N, NN);
-        }
-
-          hipEventRecord(stop, NULL);
-          hipEventSynchronize(stop);
-
-          hipEventElapsedTime(&eventMs, start, stop);
-   
-		      //printf("elapsed time:%f\n", eventMs);
-          double total_bytes = ( double)(mm)* (double)N + double(mm) + double(N);          
-          total_bytes = total_bytes * sizeof(float) /1024/1024/1024;
-		      double gbps = total_bytes/eventMs * 1000 * 10;
-		      printf("sgemv_8x1_t1x1 [mm=%d] ==> %lf G Bytes/s, ms: %f\n", mm, gbps, eventMs);
-   }
-
+ 
    for(int mm=512; mm <=M; mm+=256)
    {
           hipLaunchKernelGGL(sgemv_4x1, 
@@ -1348,7 +1289,7 @@ int main() {
    }
    for(int mm=512; mm <=M; mm+=256)
    {
-          hipLaunchKernelGGL(sgemv_2x1, 
+          hipLaunchKernelGGL(sgemv_2x1_t2x4x1, 
                         dim3(mm/2 ),
                         dim3(THREADS_PER_BLOCK_X),
                         0, 0,
@@ -1357,7 +1298,7 @@ int main() {
           hipEventRecord(start, NULL);
         for (int i = 0; i < 10; i++)
         {
-          hipLaunchKernelGGL(sgemv_2x1, 
+          hipLaunchKernelGGL(sgemv_2x1_t2x4x1, 
                         dim3(mm/2 ),
                         dim3(THREADS_PER_BLOCK_X),
                         0, 0,
@@ -1373,12 +1314,12 @@ int main() {
           double total_bytes = ( double)(mm)* (double)N + double(mm) + double(N);          
           total_bytes = total_bytes * sizeof(float) /1024/1024/1024;
 		      double gbps = total_bytes/eventMs * 1000 * 10;
-		      printf("sgemv_2x1 [mm=%d] ==> %lf G Bytes/s, ms: %f\n", mm, gbps, eventMs);
+		      printf("sgemv_2x1_t2x4x1 [mm=%d] ==> %lf G Bytes/s, ms: %f\n", mm, gbps, eventMs);
    }
 
   //exit(0);
    for(int mm=1024; mm <=M; mm+=256){
-        hipLaunchKernelGGL(sgemv_direct_64x1_t1x1, 
+        hipLaunchKernelGGL(sgemv_direct_64x1_t1x64x1, 
                         dim3(mm/64 ),
                         dim3(64),
                         0, 0,
@@ -1386,7 +1327,7 @@ int main() {
 
         hipEventRecord(start, NULL);
         for (int i = 0; i < 10; i++){
-          hipLaunchKernelGGL(sgemv_direct_64x1_t1x1, 
+          hipLaunchKernelGGL(sgemv_direct_64x1_t1x64x1, 
                         dim3(mm/64),
                         dim3(64),
                         0, 0,
@@ -1403,12 +1344,12 @@ int main() {
         float total_bytes = ( double)(mm)* (double)N + double(N) + double(mm);          
         total_bytes = total_bytes * sizeof(float) /1024/1024/1024;
         float gbps = total_bytes/eventMs * 1000 * 10;
-        printf("sgemv_64x1_t1x1 [m=%d]==> %lf G Bytes/s, ms: %f\n", mm, gbps, eventMs);
+        printf("sgemv_direct_64x1_t1x64x1 [m=%d]==> %lf G Bytes/s, ms: %f\n", mm, gbps, eventMs);
    }
 
 
    for(int mm=1024; mm <=M; mm+=256){
-        hipLaunchKernelGGL(sgemv_direct_64x1_t8x1, 
+        hipLaunchKernelGGL(sgemv_direct_64x1_t8x4x1, 
                         dim3(mm/64 ),
                         dim3(64),
                         0, 0,
@@ -1416,7 +1357,7 @@ int main() {
 
         hipEventRecord(start, NULL);
         for (int i = 0; i < 10; i++){
-          hipLaunchKernelGGL(sgemv_direct_64x1_t8x1, 
+          hipLaunchKernelGGL(sgemv_direct_64x1_t8x4x1, 
                         dim3(mm/64),
                         dim3(64),
                         0, 0,
@@ -1433,7 +1374,7 @@ int main() {
         float total_bytes = ( double)(mm)* (double)N + double(N) + double(mm);          
         total_bytes = total_bytes * sizeof(float) /1024/1024/1024;
         float gbps = total_bytes/eventMs * 1000 * 10;
-        printf("sgemv_64x1_t8x1 [m=%d]==> %lf G Bytes/s, ms: %f\n", mm, gbps, eventMs);
+        printf("sgemv_64x1_t8x4x1 [m=%d]==> %lf G Bytes/s, ms: %f\n", mm, gbps, eventMs);
    }
 
 
