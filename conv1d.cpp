@@ -18,6 +18,15 @@
 #define THREADS_PER_BLOCK_Y  1
 #define THREADS_PER_BLOCK_Z  1
 
+__global__ void conv1d_k(const float* a, const float* w, float* __restrict__ r, const int k ){
+  int x = hipBlockDim_x * hipBlockIdx_x + hipThreadIdx_x;
+  int gid = x;
+  float sum =0;
+  for(int i=0; i < k; i++)     sum += a[gid + i] * w [i];  
+  r[gid] =sum;
+}
+
+
 __global__ void conv1d_2048(const float* a, const float* w, float* __restrict__ r ){
   int x = hipBlockDim_x * hipBlockIdx_x + hipThreadIdx_x;
   int gid = x;
@@ -749,8 +758,8 @@ int main() {
 	hipEventCreate(&start);
 	hipEventCreate(&stop);
 	float eventMs = 1.0f;
-
-    hipLaunchKernelGGL(conv1d_2048, 
+ double ips;
+{    hipLaunchKernelGGL(conv1d_2048, 
                   dim3((WIDTH*HEIGHT)/THREADS_PER_BLOCK_X),
                   dim3(THREADS_PER_BLOCK_X, THREADS_PER_BLOCK_Y),
                   0, 0,
@@ -772,9 +781,39 @@ int main() {
 		hipEventElapsedTime(&eventMs, start, stop);
 
 		//printf("elapsed time:%f\n", eventMs);
-    double ips = ( double)(NUM-2048) * 2048 * 64 /1024/1024/1024;
+    ips = ( double)(NUM-2048) * 2048 * 64 /1024/1024/1024;
 		ips = ips / ( double)eventMs * 1000;
 		printf("conv1d_2048 ==> %lf G FMAs/s\n", ips);
+   }
+
+
+   {
+          hipLaunchKernelGGL(conv1d_k, 
+                      dim3((WIDTH*HEIGHT)/THREADS_PER_BLOCK_X),
+                      dim3(THREADS_PER_BLOCK_X, THREADS_PER_BLOCK_Y),
+                      0, 0,
+                      deviceA ,deviceB ,deviceC,2048 );
+
+        hipEventRecord(start, NULL);
+        for (int i = 1; i < 64; i++)
+        {
+        hipLaunchKernelGGL(conv1d_k, 
+                      dim3((WIDTH*HEIGHT)/THREADS_PER_BLOCK_X),
+                      dim3(THREADS_PER_BLOCK_X, THREADS_PER_BLOCK_Y),
+                      0, 0,
+                      deviceA ,deviceB ,deviceC, 2048);
+        }
+
+        hipEventRecord(stop, NULL);
+        hipEventSynchronize(stop);
+
+        hipEventElapsedTime(&eventMs, start, stop);
+
+        //printf("elapsed time:%f\n", eventMs);
+        ips = ( double)(NUM-2048) * 2048 * 64 /1024/1024/1024;
+        ips = ips / ( double)eventMs * 1000;
+        printf("conv1d_k ==> %lf G FMAs/s\n", ips);
+   }
 
    {
           hipLaunchKernelGGL(conv1d_2048_opt1, 
