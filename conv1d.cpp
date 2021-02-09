@@ -22,13 +22,8 @@ __global__ void conv1d_2048(const float* a, const float* w, float* __restrict__ 
   int x = hipBlockDim_x * hipBlockIdx_x + hipThreadIdx_x;
   int gid = x;
   float sum =0;
-  for(int i=0; i < 2048; i++)
-  {
-     sum += a[gid + i] * w [i];
-  }
-  
+  for(int i=0; i < 2048; i++)     sum += a[gid + i] * w [i];  
   r[gid] =sum;
-
 }
 
 
@@ -432,6 +427,279 @@ __global__ void conv1d_2048_opt3(const float* a, const float* w, float* __restri
 }
 
 
+//BLOCK : Result  tile: 8x64
+//Total waves can be extended to 64x by Result Tile in 8x1
+__global__ void conv1d_2048_t8x1(const float* a, const float* w, float* __restrict__ r){
+  int x = hipBlockDim_x * hipBlockIdx_x + hipThreadIdx_x;
+  int gid = x * 8;
+  if( gid >= (WIDTH*HEIGHT)){
+     return ;
+  }
+  float sum[8];
+  float ww[16];
+  float aa[8];
+
+  //Load 8 Data 
+  for(int i=0; i <8; i++)
+  {
+      sum[i] = 0;
+      ww[i] = w[i];
+      aa[i] = a[i+gid];
+
+  }
+
+  // SUM[0]: 8x filter
+  // SUM[1]: 7x filter
+  // SUM[2]: 6x filter
+  // SUM[3]: 5x filter
+  // SUM[4]: 4x filter
+  // SUM[5]: 3x filter
+  // SUM[6]: 2x filter
+  // SUM[7]: 1x filter
+
+  for(int i=0; i < 8; i++)
+  {
+      for(int j=0; j < (8-i);j++)
+      {
+         sum[i] += aa[j+i] * ww[j];
+      }
+       
+  }
+
+  // SUM[0-7]: 8x filter
+  for(int i=8; i < 16; i+=8)
+  {
+     for(int s=0; s<8; s++)
+     {
+       aa[s] = a[gid+i+s];
+       ww[s+8] = w[i+s];
+     }
+     for(int s =0; s < 8; s++)
+     {
+        int offset = 8-s;
+        for(int t=0; t < 8; t++)
+        {
+          sum[s] += aa[t] * ww[offset + t];
+        }
+     }
+
+     //shift left
+     for(int s=0; s < 8; s++){
+       ww[s] = ww[s+8];
+     }
+     
+  }
+
+  //Rest Major Loop
+ //#pragma unroll  
+  for(int i=16; i < 2048; i+=16)
+  {
+     for(int s=0; s<8; s++)
+     {
+       aa[s] = a[gid+i+s];
+       ww[s+8] = w[i+s];
+     }
+     for(int s =0; s < 8; s++)
+     {
+        int offset = 8-s;
+        for(int t=0; t < 8; t++)
+        {
+          sum[s] += aa[t] * ww[offset + t];
+        }
+     }
+
+     //shift left
+     for(int s=0; s < 8; s++){
+       ww[s] = ww[s+8];
+     }
+
+
+     i+=8;
+     for(int s=0; s<8; s++)
+     {
+       aa[s] = a[gid+i+s];
+       ww[s+8] = w[i+s];
+     }
+     for(int s =0; s < 8; s++)
+     {
+        int offset = 8-s;
+        for(int t=0; t < 8; t++)
+        {
+          sum[s] += aa[t] * ww[offset + t];
+        }
+     }
+
+     //shift left
+     for(int s=0; s < 8; s++){
+       ww[s] = ww[s+4];
+     }
+     
+  }
+
+  //last 3
+  for(int i=0; i <7; i++){
+    aa[i] = a[gid+2048+i];   
+  }
+#if 0  
+  sum[1] += aa[0] * ww[3];
+  sum[2] += aa[0] * ww[2];
+  sum[2] += aa[1] * ww[3];
+  sum[3] += aa[0] * ww[1];
+  sum[3] += aa[1] * ww[2];
+  sum[3] += aa[2] * ww[3];
+#else 
+  for(int s=1; s < 8; s++)
+  {
+      for(int t=0; t <s; t++)
+      {
+        int offset = 8-s;
+        sum[s] += aa[t] * ww[offset+t];
+      }
+  }
+#endif 
+
+   for(int i=0; i <8; i++){
+       r[gid+i] = sum[i];
+   } 
+}
+
+
+//BLOCK : Result  tile: 8x64
+//Total waves can be extended to 64x by Result Tile in 8x1
+__global__ void conv1d_2048_t8x1_unroll(const float* a, const float* w, float* __restrict__ r){
+  int x = hipBlockDim_x * hipBlockIdx_x + hipThreadIdx_x;
+  int gid = x * 8;
+  if( gid >= (WIDTH*HEIGHT)){
+     return ;
+  }
+  float sum[8];
+  float ww[16];
+  float aa[8];
+
+  //Load 8 Data 
+  for(int i=0; i <8; i++)
+  {
+      sum[i] = 0;
+      ww[i] = w[i];
+      aa[i] = a[i+gid];
+
+  }
+
+  // SUM[0]: 8x filter
+  // SUM[1]: 7x filter
+  // SUM[2]: 6x filter
+  // SUM[3]: 5x filter
+  // SUM[4]: 4x filter
+  // SUM[5]: 3x filter
+  // SUM[6]: 2x filter
+  // SUM[7]: 1x filter
+
+  for(int i=0; i < 8; i++)
+  {
+      for(int j=0; j < (8-i);j++)
+      {
+         sum[i] += aa[j+i] * ww[j];
+      }
+       
+  }
+
+  // SUM[0-7]: 8x filter
+  for(int i=8; i < 16; i+=8)
+  {
+     for(int s=0; s<8; s++)
+     {
+       aa[s] = a[gid+i+s];
+       ww[s+8] = w[i+s];
+     }
+     for(int s =0; s < 8; s++)
+     {
+        int offset = 8-s;
+        for(int t=0; t < 8; t++)
+        {
+          sum[s] += aa[t] * ww[offset + t];
+        }
+     }
+
+     //shift left
+     for(int s=0; s < 8; s++){
+       ww[s] = ww[s+8];
+     }
+     
+  }
+
+  //Rest Major Loop
+ #pragma unroll  
+  for(int i=16; i < 2048; i+=16)
+  {
+     for(int s=0; s<8; s++)
+     {
+       aa[s] = a[gid+i+s];
+       ww[s+8] = w[i+s];
+     }
+     for(int s =0; s < 8; s++)
+     {
+        int offset = 8-s;
+        for(int t=0; t < 8; t++)
+        {
+          sum[s] += aa[t] * ww[offset + t];
+        }
+     }
+
+     //shift left
+     for(int s=0; s < 8; s++){
+       ww[s] = ww[s+8];
+     }
+
+
+     i+=8;
+     for(int s=0; s<8; s++)
+     {
+       aa[s] = a[gid+i+s];
+       ww[s+8] = w[i+s];
+     }
+     for(int s =0; s < 8; s++)
+     {
+        int offset = 8-s;
+        for(int t=0; t < 8; t++)
+        {
+          sum[s] += aa[t] * ww[offset + t];
+        }
+     }
+
+     //shift left
+     for(int s=0; s < 8; s++){
+       ww[s] = ww[s+4];
+     }
+     
+  }
+
+  //last 3
+  for(int i=0; i <7; i++){
+    aa[i] = a[gid+2048+i];   
+  }
+#if 0  
+  sum[1] += aa[0] * ww[3];
+  sum[2] += aa[0] * ww[2];
+  sum[2] += aa[1] * ww[3];
+  sum[3] += aa[0] * ww[1];
+  sum[3] += aa[1] * ww[2];
+  sum[3] += aa[2] * ww[3];
+#else 
+  for(int s=1; s < 8; s++)
+  {
+      for(int t=0; t <s; t++)
+      {
+        int offset = 8-s;
+        sum[s] += aa[t] * ww[offset+t];
+      }
+  }
+#endif 
+
+   for(int i=0; i <8; i++){
+       r[gid+i] = sum[i];
+   } 
+}
+
 
 using namespace std;
 
@@ -587,6 +855,61 @@ int main() {
           ips =( double) (NUM-2048) * 2048 * 64 /1024/1024/1024;
           ips = ips /(double)  eventMs * 1000 ;
           printf("conv1d_2048_opt2 ==> %lf G FMAs/s, time: %f \n", ips, eventMs );
+   }
+
+
+{
+          hipLaunchKernelGGL(conv1d_2048_t8x1, 
+                        dim3((WIDTH*HEIGHT)/256/8),
+                        dim3(256 ),
+                        0, 0,
+                        deviceA ,deviceB ,deviceC);
+
+          hipEventRecord(start, NULL);
+        for (int i = 1; i < 64; i++)
+        {
+          hipLaunchKernelGGL(conv1d_2048_t8x1, 
+                        dim3((WIDTH*HEIGHT)/256/8),
+                        dim3(256 ),
+                        0, 0,
+                        deviceA ,deviceB ,deviceC);
+        }
+          hipEventRecord(stop, NULL);
+          hipEventSynchronize(stop);
+
+          hipEventElapsedTime(&eventMs, start, stop);
+
+          //printf("elapsed time:%f\n", eventMs);
+          ips =( double) (NUM-2048) * 2048 * 64 /1024/1024/1024;
+          ips = ips /(double)  eventMs * 1000 ;
+          printf("conv1d_2048_t8x1 ==> %lf G FMAs/s, time: %f \n", ips, eventMs );
+   }
+
+{
+          hipLaunchKernelGGL(conv1d_2048_t8x1_unroll, 
+                        dim3((WIDTH*HEIGHT)/256/8),
+                        dim3(256 ),
+                        0, 0,
+                        deviceA ,deviceB ,deviceC);
+
+          hipEventRecord(start, NULL);
+        for (int i = 1; i < 64; i++)
+        {
+          hipLaunchKernelGGL(conv1d_2048_t8x1_unroll, 
+                        dim3((WIDTH*HEIGHT)/256/8),
+                        dim3(256 ),
+                        0, 0,
+                        deviceA ,deviceB ,deviceC);
+        }
+          hipEventRecord(stop, NULL);
+          hipEventSynchronize(stop);
+
+          hipEventElapsedTime(&eventMs, start, stop);
+
+          //printf("elapsed time:%f\n", eventMs);
+          ips =( double) (NUM-2048) * 2048 * 64 /1024/1024/1024;
+          ips = ips /(double)  eventMs * 1000 ;
+          printf("conv1d_2048_t8x1 ==> %lf G FMAs/s, time: %f \n", ips, eventMs );
    }
 
   HIP_ASSERT(hipMemcpy(hostA, deviceA, NUM*sizeof(float), hipMemcpyDeviceToHost));
