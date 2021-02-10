@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <algorithm>
 #include <stdlib.h>
+#include <unistd.h>
 #include<iostream>
 #include "hip/hip_runtime.h"
 
@@ -9,9 +10,9 @@
 #define HIP_ASSERT(x) (assert((x)==hipSuccess))
 
 
-#define M    4096
-#define N    4096
-#define K    (4096+128)
+#define M    8192
+#define N    8192
+#define K    (8192)
 
 #define NUM       (M*K)
 
@@ -49,6 +50,7 @@ __global__ void sgemm_nt_128x128(const float* a, const float* b, float* __restri
              sum[i][j] += adata[i] * bdata[j]; 
           }
       }
+
   } 
 
   //store   
@@ -107,7 +109,7 @@ __global__ void sgemm_nt_128x128_unroll2(const float* a, const float* b, float* 
 
 
 
-__global__ void sgemm_nt_128x128_lds_unorll8(const float* a, const float* b, float* __restrict__ c, const int m, const int n, const int k ){
+__global__ void sgemm_nt_128x128_lds_unroll8(const float* a, const float* b, float* __restrict__ c, const int m, const int n, const int k ){
   int wk_tile_m =  hipBlockIdx_y * 128 ;
   int wk_tile_n =  hipBlockIdx_x * 128 ;
   int thread_tile_m = wk_tile_m + hipThreadIdx_y * 8;
@@ -187,6 +189,156 @@ __global__ void sgemm_nt_128x128_lds_unorll8(const float* a, const float* b, flo
   }  
 }
 
+__global__ void sgemm_nt_128x128_lds_unroll8_double_buf(const float* a, const float* b, float* __restrict__ c, const int m, const int n, const int k ){
+  int wk_tile_m =  hipBlockIdx_y * 128 ;
+  int wk_tile_n =  hipBlockIdx_x * 128 ;
+  int thread_tile_m = wk_tile_m + hipThreadIdx_y * 8;
+  int thread_tile_n = wk_tile_n + hipThreadIdx_x * 8;
+  int local_id = hipThreadIdx_y * 16 + hipThreadIdx_x;
+  int local_tile_m, local_tile_n;
+  local_tile_m = hipThreadIdx_x * 8;
+  local_tile_n = hipThreadIdx_y * 8;
+
+  float sum[8][8];
+  __shared__ float a_shared[128*8];
+  __shared__ float b_shared[128*8];
+
+  for(int i=0; i < 8; i++){
+      for(int j=0; j < 8; j++){
+        sum[i][j] = 0;
+      }
+  }
+ 
+  float* ptr_a = NULL;
+  float* ptr_b = NULL;
+  int local_write = 0;
+  //First Fetch
+  //128x4 data scattered into 256 threads  
+  //every threads fetch DWORDX2
+
+  //local memory store 128 data 
+  if(local_id < 128 )
+  {
+      ptr_a = (float*)(a + (wk_tile_m + local_id ) * k);  
+      ptr_b = (float*)(b + (wk_tile_n + local_id ) * k);  
+      local_write = local_id;
+  }
+  else
+  {
+       //offset K + 2 == 2,3
+       ptr_a = (float*)(a + (wk_tile_m + (local_id &0x7f) ) * k + 2 );  
+       ptr_b = (float*)(b + (wk_tile_n + (local_id &0x7f) ) * k + 2 );  
+       local_write = local_id + 128*2;
+  }
+
+  
+  //fetch offset 0,1,2,3
+  a_shared[local_write ]      = *(ptr_a + 0);
+  a_shared[local_write +128 ] = *(ptr_a + 1);
+  b_shared[local_write ]      = *(ptr_b + 0);
+  b_shared[local_write +128 ] = *(ptr_b + 1);
+
+  //unroll 8
+  for(int kk=0; kk < k-8; kk+=8) {
+      __syncthreads();      
+
+      //fetch offset: kk+  4,5,6,7
+      a_shared[local_write + 128 *4 ]       = *(ptr_a + kk + 4);
+      a_shared[local_write + 128 *4 + 128 ] = *(ptr_a + kk + 5);
+      b_shared[local_write + 128 *4]        = *(ptr_b + kk + 4);
+      b_shared[local_write + 128 *4 + 128 ] = *(ptr_b + kk + 5);
+
+      //8x8x4 FMAs
+      for(int s=0; s < 4; s++)  
+      {     float adata[8];
+            float bdata[8];
+
+            for(int t=0; t < 8; t++){
+              adata[t] = a_shared[local_tile_m + t + s * 128];
+              bdata[t] = b_shared[local_tile_n + t + s * 128];
+            }
+            for(int i=0; i <8; i++){          
+                for(int j=0; j <8; j++){
+                  sum[i][j] += adata[i] * bdata[j]; 
+                }
+            }
+      }      
+
+      __syncthreads();
+      //fetch offset kk+ 8,9,10,11
+      a_shared[local_write + 128 *4 ]       = *(ptr_a + kk + 8);
+      a_shared[local_write + 128 *4 + 128 ] = *(ptr_a + kk + 9);
+      b_shared[local_write + 128 *4]        = *(ptr_b + kk + 8);
+      b_shared[local_write + 128 *4 + 128 ] = *(ptr_b + kk + 9);
+      for(int s=4; s < 8; s++)  
+      {     float adata[8];
+            float bdata[8];
+
+            for(int t=0; t < 8; t++){
+              adata[t] = a_shared[local_tile_m + t + s * 128];
+              bdata[t] = b_shared[local_tile_n + t + s * 128];
+            }
+            for(int i=0; i <8; i++){          
+                for(int j=0; j <8; j++){
+                  sum[i][j] += adata[i] * bdata[j]; 
+                }
+            }
+      }      
+
+  } 
+
+  //last 8X 
+  {
+      int kk= k - 8;
+      __syncthreads();      
+
+      //fetch kk  offset+ 4,5,6,7
+      a_shared[local_write + 128 *4 ]       = *(ptr_a + kk + 4);
+      a_shared[local_write + 128 *4 + 128 ] = *(ptr_a + kk + 5);
+      b_shared[local_write + 128 *4]        = *(ptr_b + kk + 4);
+      b_shared[local_write + 128 *4 + 128 ] = *(ptr_b + kk + 5);
+
+      //8x8x4 FMAs
+      for(int s=0; s < 4; s++)  
+      {     float adata[8];
+            float bdata[8];
+
+            for(int t=0; t < 8; t++){
+              adata[t] = a_shared[local_tile_m + t + s * 128];
+              bdata[t] = b_shared[local_tile_n + t + s * 128];
+            }
+            for(int i=0; i <8; i++){          
+                for(int j=0; j <8; j++){
+                  sum[i][j] += adata[i] * bdata[j]; 
+                }
+            }
+      }      
+
+      __syncthreads();
+      for(int s=4; s < 8; s++)  
+      {     float adata[8];
+            float bdata[8];
+
+            for(int t=0; t < 8; t++){
+              adata[t] = a_shared[local_tile_m + t + s * 128];
+              bdata[t] = b_shared[local_tile_n + t + s * 128];
+            }
+            for(int i=0; i <8; i++){          
+                for(int j=0; j <8; j++){
+                  sum[i][j] += adata[i] * bdata[j]; 
+                }
+            }
+      }      
+  } 
+
+  //store   
+  for(int i=0; i < 8; i++){
+      for(int j=0; j < 8; j++){
+          c[ (thread_tile_m + i) * n + thread_tile_n + j] = sum[i][j];
+      }
+  }  
+}
+
 /*
 Matrix A: M * K 
 Matrix B: Transposed N * K 
@@ -202,20 +354,27 @@ __global__ void sgemm_nt_96x128(const float* a, const float* b, float* __restric
   int thread_tile_n = wk_tile_n + hipThreadIdx_x * 8;
 
   float sum[6][8];
-
+#if 1 
   for(int i=0; i < 6; i++){
       for(int j=0; j < 8; j++){
-        sum[i][j] = 0;
+        sum[i][j] = 0;      
+      }
+  }
+#else 
+  for(int i=0; i < 6; i++){
+      for(int j=0; j < 8; j++){
+        sum[i][j] = 0;      
       }
   }
 
+#endif 
   for(int kk=0; kk < k; kk++) {
       float adata[6];
       float bdata[8];
 
       for(int i=0; i < 6; i++) {
         if( (thread_tile_m + i) < m){
-         adata[i] = a[( thread_tile_m + i)* k +kk];
+           adata[i] = a[( thread_tile_m + i)* k +kk];
         }
         else
         {
@@ -298,22 +457,22 @@ int main() {
 	hipEventCreate(&stop);
 	float eventMs = 1.0f;
 
-   if(1)
+   for(int mnk=128;mnk<M+1; mnk+=128)
    {
           hipLaunchKernelGGL(sgemm_nt_128x128, 
-                        dim3(M/128, N/128 ),
+                        dim3(mnk/128, mnk/128 ),
                         dim3(THREADS_PER_BLOCK_X, THREADS_PER_BLOCK_Y),
                         0, 0,
-                        deviceA ,deviceB ,deviceC, M, N, K);
+                        deviceA ,deviceB ,deviceC, mnk, mnk, mnk);
 
           hipEventRecord(start, NULL);
-        for (int i = 0; i < 1; i++)
+        for (int i = 0; i < 10; i++)
         {
           hipLaunchKernelGGL(sgemm_nt_128x128, 
-                        dim3(M/128, N/128 ),
+                        dim3(mnk/128, mnk/128 ),
                         dim3(THREADS_PER_BLOCK_X, THREADS_PER_BLOCK_Y),
                         0, 0,
-                        deviceA ,deviceB ,deviceC, M, N, K);
+                        deviceA ,deviceB ,deviceC, mnk, mnk, mnk);
         }
 
           hipEventRecord(stop, NULL);
@@ -322,28 +481,29 @@ int main() {
           hipEventElapsedTime(&eventMs, start, stop);
    
 		      //printf("elapsed time:%f\n", eventMs);
-          double ips = ( double)(M)*( double)N*( double)K /1024/1024/1024;
+          double ips = ( double)(mnk)*( double)mnk*( double)mnk /1024/1024/1024 * 10;
 		      ips = ips / ( double)eventMs * 1000 ;
-		      printf("sgemm_nt_128x128 plain ==> %lf G FMAs/s, ms: %f\n", ips, eventMs);
+		      printf("sgemm_nt_128x128 plain [mnk=%d]==> %lf G FMAs/s, ms: %f\n", mnk, ips, eventMs);
+          usleep (500 *1000);
 
    }
 
-   if(1)
+   for(int mnk=128;mnk<M+1; mnk+=128)
    {
           hipLaunchKernelGGL(sgemm_nt_128x128_unroll2, 
-                        dim3(M/128, N/128 ),
+                        dim3(mnk/128, mnk/128 ),
                         dim3(THREADS_PER_BLOCK_X, THREADS_PER_BLOCK_Y),
                         0, 0,
-                        deviceA ,deviceB ,deviceC, M, N, K);
+                        deviceA ,deviceB ,deviceC, mnk, mnk, mnk);
 
           hipEventRecord(start, NULL);
-        for (int i = 0; i < 1; i++)
+        for (int i = 0; i < 10; i++)
         {
           hipLaunchKernelGGL(sgemm_nt_128x128_unroll2, 
-                        dim3(M/128, N/128 ),
+                        dim3(mnk/128, mnk/128 ),
                         dim3(THREADS_PER_BLOCK_X, THREADS_PER_BLOCK_Y),
                         0, 0,
-                        deviceA ,deviceB ,deviceC, M, N, K);
+                        deviceA ,deviceB ,deviceC, mnk, mnk, mnk);
         }
 
           hipEventRecord(stop, NULL);
@@ -352,28 +512,29 @@ int main() {
           hipEventElapsedTime(&eventMs, start, stop);
    
 		      //printf("elapsed time:%f\n", eventMs);
-          double ips = ( double)(M)*( double)N*( double)K /1024/1024/1024;
+          double ips = ( double)(mnk)*( double)mnk*( double)mnk /1024/1024/1024 * 10;
 		      ips = ips / ( double)eventMs * 1000 ;
-		      printf("sgemm_nt_128x128 unroll2 ==> %lf G FMAs/s, ms: %f\n", ips, eventMs);
+		      printf("sgemm_nt_128x128 unroll2 [mnk=%d] ==> %lf G FMAs/s, ms: %f\n",mnk, ips, eventMs);
+          usleep (500 *1000);
 
    }
 
-   if(1)
+   for(int mnk=128;mnk<M+1; mnk+=128)
    {
-          hipLaunchKernelGGL(sgemm_nt_128x128_lds_unorll8, 
-                        dim3(M/128, N/128 ),
+          hipLaunchKernelGGL(sgemm_nt_128x128_lds_unroll8, 
+                        dim3(mnk/128, mnk/128 ),
                         dim3(THREADS_PER_BLOCK_X, THREADS_PER_BLOCK_Y),
                         0, 0,
-                        deviceA ,deviceB ,deviceC, M, N, K);
+                        deviceA ,deviceB ,deviceC, mnk, mnk, mnk);
 
           hipEventRecord(start, NULL);
-        for (int i = 0; i < 1; i++)
+        for (int i = 0; i < 10; i++)
         {
-          hipLaunchKernelGGL(sgemm_nt_128x128_lds_unorll8, 
-                        dim3(M/128, N/128 ),
+          hipLaunchKernelGGL(sgemm_nt_128x128_lds_unroll8, 
+                        dim3(mnk/128, mnk/128 ),
                         dim3(THREADS_PER_BLOCK_X, THREADS_PER_BLOCK_Y),
                         0, 0,
-                        deviceA ,deviceB ,deviceC, M, N, K);
+                        deviceA ,deviceB ,deviceC, mnk, mnk, mnk);
         }
 
           hipEventRecord(stop, NULL);
@@ -382,9 +543,41 @@ int main() {
           hipEventElapsedTime(&eventMs, start, stop);
    
 		      //printf("elapsed time:%f\n", eventMs);
-          double ips = ( double)(M)*( double)N*( double)K /1024/1024/1024;
+          double ips = ( double)(mnk)*( double)mnk*( double)mnk /1024/1024/1024*10;
 		      ips = ips / ( double)eventMs * 1000 ;
-		      printf("sgemm_nt_128x128_lds_unorll8 ==> %lf G FMAs/s, ms: %f\n", ips, eventMs);
+		      printf("sgemm_nt_128x128_lds_unroll8:[%d x %d % d ] ==> %lf G FMAs/s, ms: %f\n", mnk,mnk,mnk, ips, eventMs);
+          usleep (500 *1000);
+
+   }
+
+    exit(0);
+   for(int mnk=128;mnk<M+1; mnk+=128)
+   {
+          hipLaunchKernelGGL(sgemm_nt_128x128_lds_unroll8_double_buf, 
+                        dim3(mnk/128, mnk/128 ),
+                        dim3(THREADS_PER_BLOCK_X, THREADS_PER_BLOCK_Y),
+                        0, 0,
+                        deviceA ,deviceB ,deviceC, mnk, mnk, mnk);
+
+          hipEventRecord(start, NULL);
+        for (int i = 0; i < 1; i++)
+        {
+          hipLaunchKernelGGL(sgemm_nt_128x128_lds_unroll8_double_buf, 
+                        dim3(mnk/128, mnk/128 ),
+                        dim3(THREADS_PER_BLOCK_X, THREADS_PER_BLOCK_Y),
+                        0, 0,
+                        deviceA ,deviceB ,deviceC, mnk, mnk, mnk);
+        }
+
+          hipEventRecord(stop, NULL);
+          hipEventSynchronize(stop);
+
+          hipEventElapsedTime(&eventMs, start, stop);
+   
+		      //printf("elapsed time:%f\n", eventMs);
+          double ips = ( double)(mnk)*( double)mnk*( double)mnk /1024/1024/1024;
+		      ips = ips / ( double)eventMs * 1000 ;
+		      printf("sgemm_nt_128x128_lds_unroll8_double_buf:[%d x %d % d ] ==> %lf G FMAs/s, ms: %f\n", mnk,mnk,mnk, ips, eventMs);
 
    }
 
@@ -414,7 +607,7 @@ int main() {
 		      //printf("elapsed time:%f\n", eventMs);
           double ips = ( double)(M)*( double)N*( double)K /1024/1024/1024;
 		      ips = ips / ( double)eventMs * 1000 ;
-		      printf("sgemm_nt_128x128_lds_unorll8 ==> %lf G FMAs/s, ms: %f\n", ips, eventMs);
+		      printf("sgemm_nt_96x128 ==> %lf G FMAs/s, ms: %f\n", ips, eventMs);
 
    }
 
