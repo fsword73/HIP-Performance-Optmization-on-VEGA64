@@ -10,8 +10,8 @@
 
 
 #define M    4096
-#define N    (4352)
-#define NN   (4352)
+#define N    (4096)
+#define NN   (4096)
 
 #define NUM       (M*NN)
 
@@ -922,6 +922,161 @@ __global__ void sgemv_2x1_t2x4x1(const float* a, const float* b, float* __restri
     }
 }
 
+#undef BLOCK_C_TILE_X
+#undef THREAD_LOAD_NUM
+#undef  BLOCK_LOAD_NUM
+#define  BLOCK_C_TILE_X  2
+#define THREAD_LOAD_NUM  2
+#define BLOCK_LOAD_NUM  (THREAD_LOAD_NUM * THREADS_PER_BLOCK_X)
+__global__ void sgemv_2x1_t2x2x1(const float* a, const float* b, float* __restrict__ c, const int m, const int n, const int lda ){
+    int wk_tile_m =  hipBlockIdx_x * BLOCK_C_TILE_X ;
+    
+    int offset = hipThreadIdx_x * THREAD_LOAD_NUM;
+
+    //NO Preload     
+    float sum[BLOCK_C_TILE_X];
+    float* a_ptr = (float*)a  + (wk_tile_m * lda);
+    for(int i=0; i < BLOCK_C_TILE_X; i++)
+        sum[i] = 0;
+#if 0        
+    for(int i =0; i < n;  i+= BLOCK_LOAD_NUM  ) {
+        //LOAD B
+        float b_data[THREAD_LOAD_NUM]; 
+
+        //Matrix B: 4x1 per thread
+        for(int j=0; j < THREAD_LOAD_NUM; j++)
+            b_data[j] = b[offset+j]; 
+
+
+        //Matrix A: 16X4 per thread,
+#pragma unroll        
+        for(int j=0; j < BLOCK_C_TILE_X; j++)
+        {
+             //Load A
+            float a_data[THREAD_LOAD_NUM]; 
+
+            for(int k=0; k < THREAD_LOAD_NUM; k++ ){
+                a_data[k]  = a_ptr[j * lda + offset + k];
+
+                //SUM A
+                sum[j] += a_data[k] * b_data[k];
+            }
+        }      
+
+        //Move offset 
+        offset +=  BLOCK_LOAD_NUM;
+    }
+#else 
+    //4x FMA per M per Thread 
+    //32 FMA per 8M per threads
+    //256 FMA per M per workgroup
+    for(int i =0; i < n;  i+= BLOCK_LOAD_NUM  ) {
+        //LOAD B
+        float b_data[THREAD_LOAD_NUM]; 
+
+        //Matrix B: 4x1 per thread
+        for(int j=0; j < THREAD_LOAD_NUM; j++)
+            b_data[j] = b[offset+j]; 
+
+        //Matrix A: 16X4 per thread,
+#pragma unroll        
+        for(int j=0; j < BLOCK_C_TILE_X; j++)
+        {
+             //Load A
+            float a_data[THREAD_LOAD_NUM]; 
+
+            for(int k=0; k < THREAD_LOAD_NUM; k++ ){
+                a_data[k]  = a_ptr[j * lda + offset + k];
+
+                //SUM A
+                sum[j] += a_data[k] * b_data[k];
+            }
+        }      
+
+        //Move offset 
+        offset +=  BLOCK_LOAD_NUM;
+
+
+#if 0        
+        //Matrix B: 4x1 per thread
+        for(int j=0; j < THREAD_LOAD_NUM; j++)
+            b_data[j] = b[offset+j]; 
+
+
+        //Matrix A: 16X4 per thread,
+#pragma unroll        
+        for(int j=0; j < BLOCK_C_TILE_X; j++)
+        {
+             //Load A
+            float a_data[THREAD_LOAD_NUM]; 
+
+            for(int k=0; k < THREAD_LOAD_NUM; k++ ){
+                a_data[k]  = a_ptr[j * lda + offset + k];
+
+                //SUM A
+                sum[j] += a_data[k] * b_data[k];
+            }
+        }
+        offset +=  BLOCK_LOAD_NUM;      
+#endif        
+    }
+#endif    
+
+    //Reduction
+    __shared__ float s_sum[BLOCK_C_TILE_X * THREADS_PER_BLOCK_X];
+
+    //Store into LDS first 
+    for(int i= 0; i < BLOCK_C_TILE_X; i++){
+         s_sum[ i * THREADS_PER_BLOCK_X + hipThreadIdx_x ] = sum[i];
+    }    
+
+    
+    //64X  threads Do reduction  together
+    //every time reduce 8 value
+    //Thread 0-7  reduce SUM[0] 
+    //Thread 8-15 reduce SUM[1] 
+  
+    int s_read_offset  = (hipThreadIdx_x >> 3) * THREADS_PER_BLOCK_X + (hipThreadIdx_x&0x7) * 8;
+    int s_write_offset = hipThreadIdx_x;
+
+    __syncthreads();
+    //__syncthreads 8 SUM by 64 threads 
+    if( hipThreadIdx_x < 16) {
+    s_sum[s_write_offset]  =  s_sum[s_read_offset + 0] +
+                              s_sum[s_read_offset + 1] +  
+                              s_sum[s_read_offset + 2] +  
+                              s_sum[s_read_offset + 3] +  
+                              s_sum[s_read_offset + 4] +  
+                              s_sum[s_read_offset + 5] +  
+                              s_sum[s_read_offset + 6] +  
+                              s_sum[s_read_offset + 7]
+                              ;  
+    }
+    
+    __syncthreads();
+    
+    //first 8 threads reduces 8x data 
+    if( hipThreadIdx_x < BLOCK_C_TILE_X){
+        s_read_offset = hipThreadIdx_x  * 8;
+
+        sum[0] = s_sum[s_read_offset + 0] + 
+                 s_sum[s_read_offset + 1] +  
+                 s_sum[s_read_offset + 2] + 
+                 s_sum[s_read_offset + 3] + 
+                 s_sum[s_read_offset + 4] + 
+                 s_sum[s_read_offset + 5] + 
+                 s_sum[s_read_offset + 6] + 
+                 s_sum[s_read_offset + 7]  
+              ;
+    }
+
+    //Store into memory
+
+    if( hipThreadIdx_x < BLOCK_C_TILE_X){
+      c[wk_tile_m + hipThreadIdx_x] = sum[0];
+    }
+}
+
 __global__ void sgemv_direct_64x1_t1x64x1(const float* a, const float* b, float* __restrict__ c, const int m, const int n, const int lda ){    
     int gid = hipBlockIdx_x * 64 + hipThreadIdx_x;
     int thread_offset =  gid *lda;
@@ -1316,9 +1471,39 @@ int main() {
 		      double gbps = total_bytes/eventMs * 1000 * 10;
 		      printf("sgemv_2x1_t2x4x1 [mm=%d] ==> %lf G Bytes/s, ms: %f\n", mm, gbps, eventMs);
    }
+   for(int mm=512; mm <=M; mm+=256)
+   {
+          hipLaunchKernelGGL(sgemv_2x1_t2x2x1, 
+                        dim3(mm/2 ),
+                        dim3(THREADS_PER_BLOCK_X),
+                        0, 0,
+                        deviceA ,deviceB ,deviceC, M, N, NN);
+
+          hipEventRecord(start, NULL);
+        for (int i = 0; i < 10; i++)
+        {
+          hipLaunchKernelGGL(sgemv_2x1_t2x2x1, 
+                        dim3(mm/2 ),
+                        dim3(THREADS_PER_BLOCK_X),
+                        0, 0,
+                        deviceA ,deviceB ,deviceC, M, N, NN);
+        }
+
+          hipEventRecord(stop, NULL);
+          hipEventSynchronize(stop);
+
+          hipEventElapsedTime(&eventMs, start, stop);
+   
+		      //printf("elapsed time:%f\n", eventMs);
+          double total_bytes = ( double)(mm)* (double)N + double(mm) + double(N);          
+          total_bytes = total_bytes * sizeof(float) /1024/1024/1024;
+		      double gbps = total_bytes/eventMs * 1000 * 10;
+		      printf("sgemv_2x1_t2x2x1 [mm=%d] ==> %lf G Bytes/s, ms: %f\n", mm, gbps, eventMs);
+   }
+
 
   //exit(0);
-   for(int mm=1024; mm <=M; mm+=256){
+   for(int mm=512; mm <=M; mm+=256){
         hipLaunchKernelGGL(sgemv_direct_64x1_t1x64x1, 
                         dim3(mm/64 ),
                         dim3(64),
@@ -1348,7 +1533,7 @@ int main() {
    }
 
 
-   for(int mm=1024; mm <=M; mm+=256){
+   for(int mm=512; mm <=M; mm+=256){
         hipLaunchKernelGGL(sgemv_direct_64x1_t8x4x1, 
                         dim3(mm/64 ),
                         dim3(64),
