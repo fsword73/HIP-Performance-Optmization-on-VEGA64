@@ -924,9 +924,11 @@ int main() {
           printf("conv1d_2048_t8x1 ==> %lf G FMAs/s, time: %f \n", ips, eventMs );
    }
 
+for(int mm=2048; mm < (WIDTH*HEIGHT); mm+= 256 * 8)
 {
+
           hipLaunchKernelGGL(conv1d_2048_t8x1_unroll, 
-                        dim3((WIDTH*HEIGHT)/256/8),
+                        dim3((mm)/256/8),
                         dim3(256 ),
                         0, 0,
                         deviceA ,deviceB ,deviceC);
@@ -935,7 +937,7 @@ int main() {
         for (int i = 1; i < 64; i++)
         {
           hipLaunchKernelGGL(conv1d_2048_t8x1_unroll, 
-                        dim3((WIDTH*HEIGHT)/256/8),
+                        dim3((mm)/256/8),
                         dim3(256 ),
                         0, 0,
                         deviceA ,deviceB ,deviceC);
@@ -946,13 +948,13 @@ int main() {
           hipEventElapsedTime(&eventMs, start, stop);
 
           //printf("elapsed time:%f\n", eventMs);
-          ips =( double) (NUM-2048) * 2048 * 64 /1024/1024/1024;
+          ips =( double) (mm-2048) * 2048 * 64 /1024/1024/1024;
           ips = ips /(double)  eventMs * 1000 ;
-          printf("conv1d_2048_t8x1 ==> %lf G FMAs/s, time: %f \n", ips, eventMs );
+          printf("conv1d_2048_t8x1 [mm=%d]==> %lf G FMAs/s, time: %f \n", mm, ips, eventMs );
    }
 
   HIP_ASSERT(hipMemcpy(hostA, deviceA, NUM*sizeof(float), hipMemcpyDeviceToHost));
-
+      
   // verify the results
 
   HIP_ASSERT(hipFree(deviceA));
