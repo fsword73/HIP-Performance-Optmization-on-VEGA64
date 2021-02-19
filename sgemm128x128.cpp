@@ -189,6 +189,89 @@ __global__ void sgemm_nt_128x128_lds_unroll8(const float* a, const float* b, flo
   }  
 }
 
+#define UNROLL_SIZE  16
+
+__global__ void sgemm_nt_128x128_lds_unroll16(const float* a, const float* b, float* __restrict__ c, const int m, const int n, const int k ){
+  int wk_tile_m =  hipBlockIdx_y * 128 ;
+  int wk_tile_n =  hipBlockIdx_x * 128 ;
+  int thread_tile_m = wk_tile_m + hipThreadIdx_y * 8;
+  int thread_tile_n = wk_tile_n + hipThreadIdx_x * 8;
+  int local_id = hipThreadIdx_y * 16 + hipThreadIdx_x;
+  int local_tile_m, local_tile_n;
+  local_tile_m = hipThreadIdx_x * 8;
+  local_tile_n = hipThreadIdx_y * 8;
+
+  float sum[8][8];
+  __shared__ float a_shared[128*UNROLL_SIZE];
+  __shared__ float b_shared[128*UNROLL_SIZE];
+
+  for(int i=0; i < 8; i++){
+      for(int j=0; j < 8; j++){
+        sum[i][j] = 0;
+      }
+  }
+ 
+  float* ptr = NULL;
+  int local_write = 0;
+  //first 128 threads load A, next 128 thread load B
+  if(local_id < 128)
+  {
+    ptr = (float*)(a + (wk_tile_m + local_id) * k); 
+    local_write = local_id;
+  }
+  else 
+  {
+     ptr = (float*)(b + (wk_tile_n + local_id-128) * k); 
+     local_write = local_id -128;
+  }
+
+
+  //unroll 8
+  for(int kk=0; kk < k; kk+=UNROLL_SIZE) {
+
+      //stroed into LDS
+      if(local_id < 128)
+      {
+          for(int i=0; i < UNROLL_SIZE; i++)
+          {
+            a_shared[i*128 + local_write] = ptr[i+kk];
+          }
+      }
+      else 
+      {
+          for(int i=0; i < UNROLL_SIZE; i++)
+          {
+            b_shared[i*128 + local_write] = ptr[i+kk];
+          }
+      }
+      __syncthreads();      
+
+      //8x16x8 FMAs
+#pragma unroll 2
+      for(int s=0; s < UNROLL_SIZE; s++)  
+      {     float adata[8];
+            float bdata[8];
+
+            for(int t=0; t < 8; t++){
+              adata[t] = a_shared[local_tile_m + t + s * 128];
+              bdata[t] = b_shared[local_tile_n + t + s * 128];
+            }
+            for(int i=0; i <8; i++){          
+                for(int j=0; j <8; j++){
+                  sum[i][j] += adata[i] * bdata[j]; 
+                }
+            }
+      }      
+  } 
+
+  //store   
+  for(int i=0; i < 8; i++){
+      for(int j=0; j < 8; j++){
+          c[ (thread_tile_m + i) * n + thread_tile_n + j] = sum[i][j];
+      }
+  }  
+}
+
 __global__ void sgemm_nt_128x128_lds_unroll8_double_buf(const float* a, const float* b, float* __restrict__ c, const int m, const int n, const int k ){
   int wk_tile_m =  hipBlockIdx_y * 128 ;
   int wk_tile_n =  hipBlockIdx_x * 128 ;
@@ -456,7 +539,7 @@ int main() {
 	hipEventCreate(&start);
 	hipEventCreate(&stop);
 	float eventMs = 1.0f;
-
+#if 1
    for(int mnk=128;mnk<M+1; mnk+=128)
    {
           hipLaunchKernelGGL(sgemm_nt_128x128, 
@@ -466,7 +549,7 @@ int main() {
                         deviceA ,deviceB ,deviceC, mnk, mnk, mnk);
 
           hipEventRecord(start, NULL);
-        for (int i = 0; i < 10; i++)
+        for (int i = 0; i < 1; i++)
         {
           hipLaunchKernelGGL(sgemm_nt_128x128, 
                         dim3(mnk/128, mnk/128 ),
@@ -481,10 +564,10 @@ int main() {
           hipEventElapsedTime(&eventMs, start, stop);
    
 		      //printf("elapsed time:%f\n", eventMs);
-          double ips = ( double)(mnk)*( double)mnk*( double)mnk /1024/1024/1024 * 10;
+          double ips = ( double)(mnk)*( double)mnk*( double)mnk /1024/1024/1024 * 1;
 		      ips = ips / ( double)eventMs * 1000 ;
 		      printf("sgemm_nt_128x128 plain [mnk=%d]==> %lf G FMAs/s, ms: %f\n", mnk, ips, eventMs);
-          usleep (500 *1000);
+          usleep (100 *1000);
 
    }
 
@@ -497,7 +580,7 @@ int main() {
                         deviceA ,deviceB ,deviceC, mnk, mnk, mnk);
 
           hipEventRecord(start, NULL);
-        for (int i = 0; i < 10; i++)
+        for (int i = 0; i < 1; i++)
         {
           hipLaunchKernelGGL(sgemm_nt_128x128_unroll2, 
                         dim3(mnk/128, mnk/128 ),
@@ -512,10 +595,10 @@ int main() {
           hipEventElapsedTime(&eventMs, start, stop);
    
 		      //printf("elapsed time:%f\n", eventMs);
-          double ips = ( double)(mnk)*( double)mnk*( double)mnk /1024/1024/1024 * 10;
+          double ips = ( double)(mnk)*( double)mnk*( double)mnk /1024/1024/1024 * 1;
 		      ips = ips / ( double)eventMs * 1000 ;
 		      printf("sgemm_nt_128x128 unroll2 [mnk=%d] ==> %lf G FMAs/s, ms: %f\n",mnk, ips, eventMs);
-          usleep (500 *1000);
+          usleep (100 *1000);
 
    }
 
@@ -528,7 +611,7 @@ int main() {
                         deviceA ,deviceB ,deviceC, mnk, mnk, mnk);
 
           hipEventRecord(start, NULL);
-        for (int i = 0; i < 10; i++)
+        for (int i = 0; i < 1; i++)
         {
           hipLaunchKernelGGL(sgemm_nt_128x128_lds_unroll8, 
                         dim3(mnk/128, mnk/128 ),
@@ -543,14 +626,45 @@ int main() {
           hipEventElapsedTime(&eventMs, start, stop);
    
 		      //printf("elapsed time:%f\n", eventMs);
-          double ips = ( double)(mnk)*( double)mnk*( double)mnk /1024/1024/1024*10;
+          double ips = ( double)(mnk)*( double)mnk*( double)mnk /1024/1024/1024*1;
 		      ips = ips / ( double)eventMs * 1000 ;
 		      printf("sgemm_nt_128x128_lds_unroll8:[%d x %d % d ] ==> %lf G FMAs/s, ms: %f\n", mnk,mnk,mnk, ips, eventMs);
-          usleep (500 *1000);
+          usleep (100 *1000);
+
+   }
+#endif
+
+   for(int mnk=128;mnk<M+1; mnk+=128)
+   {
+          hipLaunchKernelGGL(sgemm_nt_128x128_lds_unroll16, 
+                        dim3(mnk/128, mnk/128 ),
+                        dim3(THREADS_PER_BLOCK_X, THREADS_PER_BLOCK_Y),
+                        0, 0,
+                        deviceA ,deviceB ,deviceC, mnk, mnk, mnk);
+
+          hipEventRecord(start, NULL);
+        for (int i = 0; i < 1; i++)
+        {
+          hipLaunchKernelGGL(sgemm_nt_128x128_lds_unroll16, 
+                        dim3(mnk/128, mnk/128 ),
+                        dim3(THREADS_PER_BLOCK_X, THREADS_PER_BLOCK_Y),
+                        0, 0,
+                        deviceA ,deviceB ,deviceC, mnk, mnk, mnk);
+        }
+
+          hipEventRecord(stop, NULL);
+          hipEventSynchronize(stop);
+
+          hipEventElapsedTime(&eventMs, start, stop);
+   
+		      //printf("elapsed time:%f\n", eventMs);
+          double ips = ( double)(mnk)*( double)mnk*( double)mnk /1024/1024/1024*1;
+		      ips = ips / ( double)eventMs * 1000 ;
+		      printf("sgemm_nt_128x128_lds_unroll16:[%d x %d % d ] ==> %lf G FMAs/s, ms: %f\n", mnk,mnk,mnk, ips, eventMs);
+          usleep (100 *1000);
 
    }
 
-    exit(0);
    for(int mnk=128;mnk<M+1; mnk+=128)
    {
           hipLaunchKernelGGL(sgemm_nt_128x128_lds_unroll8_double_buf, 
