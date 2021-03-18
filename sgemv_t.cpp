@@ -10,8 +10,8 @@
 
 
 #define M    (8192)
-#define N    (4352)
-#define NN   (4352)
+#define N    (2048)
+#define NN   (8192)
 
 #define NUM       (M*NN)
 
@@ -35,8 +35,9 @@
 //One wave needs 16 DWORDs per loop
 
 __global__ void sgemv_t_c16x1_t1x4x1(const float* a, const float* b, float* __restrict__ c, const int m, const int n, const int lda ){
+#define X_FMA 4    
     int tile_m  =  hipBlockIdx_x  * 16 + hipThreadIdx_x;   
-    int row_off = hipThreadIdx_y  * 4;  
+    int row_off = hipThreadIdx_y  * X_FMA;  
 
     if(tile_m >= m)
         return;
@@ -46,24 +47,26 @@ __global__ void sgemv_t_c16x1_t1x4x1(const float* a, const float* b, float* __re
 
     float sum= 0;
     int i =0;
-    float adata[4];
-    float bdata[4];
+    float adata[X_FMA];
+    float bdata[X_FMA];
 
-    
+    float shared_bdata[64];
     //4X data alignment per thread
     //32x data alignment per workgroup
 
-    for(i=0; (i+row_off+4) < n; i+= (32 * 4) )    
+    for(i=0; (i+row_off+X_FMA) < n; i+= (32 * X_FMA) )    
     {
+        for(int j=0;j < X_FMA; j++){
+            bdata[j] = b_ptr[i+j];
+            //asm volatile ("s_nop 1\n");
+        }
         //read A/B 4x rows 
-        for(int j=0;j < 4; j++){
+        for(int j=0;j < X_FMA; j++){
             adata[j] = a_ptr[(i+j) * lda];            
          }
-        for(int j=0;j < 4; j++){
-            bdata[j] = b_ptr[i+j];
-        }
+         
         //read B 4x data 
-        for(int j=0;j < 4; j++){
+        for(int j=0;j < X_FMA; j++){
             sum += adata[j] * bdata[j];
         }
     }
@@ -123,8 +126,78 @@ __global__ void sgemv_t_c16x1_t1x4x1(const float* a, const float* b, float* __re
         
         c[tile_m]  = sum;        
     }
-    __asm volatile("v_mov_b32 v250,  0"::);
 }
+
+
+__global__ void sgemv_t_c64x1_t1x2x1(const float* a, const float* b, float* __restrict__ c, const int m, const int n, const int lda ){
+#undef X_FMA
+#define X_FMA 2    
+    int tile_m  =  hipBlockIdx_x  * 64 + hipThreadIdx_x;   
+    int row_off = hipThreadIdx_y * X_FMA;  
+
+    if(tile_m >= m)
+        return;
+
+    const float* a_ptr = a + tile_m + row_off * lda;
+    const float* b_ptr = b + row_off;    
+
+    float sum = 0;
+    int i =0;
+    float adata[X_FMA];
+    float bdata[X_FMA];
+
+    float shared_bdata[64];
+    //4X data alignment per thread
+    //32x data alignment per workgroup
+
+    for(i=0; (i+row_off+X_FMA) < n; i+= ( 8  * X_FMA) )    
+    {
+        //read A/B 4x rows 
+        for(int j=0;j < X_FMA; j++){
+            adata[j] = a_ptr[(i+j) * lda ];            
+         }
+         
+        //read B 4x data 
+        for(int j=0;j < X_FMA; j++){
+            bdata[j] = b_ptr[i+j];
+        }
+        for(int j=0;j < X_FMA; j++){
+            sum += adata[j]   * bdata[j];
+        }
+    }
+    //Last 1 
+    {
+        adata[0] = 0;
+        bdata[0] = 0;
+        if((i + row_off) < n){
+            adata[0] = a_ptr[(i + 0)* lda];    
+            bdata[0] = b_ptr[ i + 0];
+        }
+        sum += adata[0] * bdata[0];            
+    }
+
+    //reduction
+    __shared__ float sum_shared[ 8 * 64  ];
+
+    int idx = hipThreadIdx_x +  hipThreadIdx_y * 64;
+    sum_shared[ idx ]  = sum;
+    __syncthreads();
+    //reduction to 64 threads
+    
+    if(idx < 64)
+    {
+        sum = sum_shared[idx + 64 * 0];
+        sum += sum_shared[idx + 64 * 1];
+        sum += sum_shared[idx + 64 * 2];
+        sum += sum_shared[idx + 64 * 3];
+        sum += sum_shared[idx + 64 * 4];
+        sum += sum_shared[idx + 64 * 5];
+        sum += sum_shared[idx + 64 * 6];
+        sum += sum_shared[idx + 64 * 7];
+        c[tile_m+0]  = sum;        
+    }    
+}
+
 
 
 using namespace std;
@@ -207,6 +280,34 @@ int main() {
           total_bytes = total_bytes * sizeof(float) /1024/1024/1024;
 		  double gbps = total_bytes/eventMs * 1000 * 1;
 		  printf("sgemv_t_c16x1_t1x4x1 [mm=%d] ==> %lf Gi Bytes/s, ms: %f\n", mm, gbps, eventMs);
+   }
+   for(int mm=512; mm <=M; mm+=256)
+   {
+          hipLaunchKernelGGL(sgemv_t_c64x1_t1x2x1, 
+                        dim3((mm/64)),
+                        dim3(64, 8),
+                        0, 0,
+                        deviceA ,deviceB ,deviceC, mm, NN, mm);
+
+          hipEventRecord(start, NULL);
+        for (int i = 0; i < 1; i++){
+          hipLaunchKernelGGL(sgemv_t_c64x1_t1x2x1, 
+                        dim3((mm/64) ),
+                        dim3(64,8),
+                        0, 0,
+                        deviceA ,deviceB ,deviceC, mm, NN, mm);
+        }
+
+          hipEventRecord(stop, NULL);
+          hipEventSynchronize(stop);
+
+          hipEventElapsedTime(&eventMs, start, stop);
+   
+		      //printf("elapsed time:%f\n", eventMs);
+          double total_bytes = ( double)(mm)* (double)NN + double(mm) + double(NN);          
+          total_bytes = total_bytes * sizeof(float) /1024/1024/1024;
+		  double gbps = total_bytes/eventMs * 1000 * 1;
+		  printf("sgemv_t_c64x1_t1x2x1 [mm=%d] ==> %lf Gi Bytes/s, ms: %f\n", mm, gbps, eventMs);
    }
 
   HIP_ASSERT(hipMemcpy(hostC, deviceC, M*sizeof(float), hipMemcpyDeviceToHost));
