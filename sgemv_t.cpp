@@ -9,7 +9,7 @@
 #define HIP_ASSERT(x) (assert((x)==hipSuccess))
 
 
-#define M    4352
+#define M    (8192)
 #define N    (4352)
 #define NN   (4352)
 
@@ -30,6 +30,10 @@
 // each thread read 4x rows.
 // Wave per Each loop:  16 x (1x(4x4)x1)
 // Work Group per Loop  16 x (1x(8x4x4)x1) 
+
+//Mehtod 2 : Load B into Shared Memory 
+//One wave needs 16 DWORDs per loop
+
 __global__ void sgemv_t_c16x1_t1x4x1(const float* a, const float* b, float* __restrict__ c, const int m, const int n, const int lda ){
     int tile_m  =  hipBlockIdx_x  * 16 + hipThreadIdx_x;   
     int row_off = hipThreadIdx_y  * 4;  
@@ -44,16 +48,17 @@ __global__ void sgemv_t_c16x1_t1x4x1(const float* a, const float* b, float* __re
     int i =0;
     float adata[4];
     float bdata[4];
+
     
     //4X data alignment per thread
     //32x data alignment per workgroup
+
     for(i=0; (i+row_off+4) < n; i+= (32 * 4) )    
     {
         //read A/B 4x rows 
         for(int j=0;j < 4; j++){
             adata[j] = a_ptr[(i+j) * lda];            
          }
-
         for(int j=0;j < 4; j++){
             bdata[j] = b_ptr[i+j];
         }
@@ -98,7 +103,6 @@ __global__ void sgemv_t_c16x1_t1x4x1(const float* a, const float* b, float* __re
     
     if(idx < 64)
     {
-        int idx = hipThreadIdx_x +  hipThreadIdx_y * 3;
         sum = sum_shared[idx + 64 * 0];
         sum += sum_shared[idx + 64 * 1];
         sum += sum_shared[idx + 64 * 2];
@@ -119,8 +123,8 @@ __global__ void sgemv_t_c16x1_t1x4x1(const float* a, const float* b, float* __re
         
         c[tile_m]  = sum;        
     }
+    __asm volatile("v_mov_b32 v250,  0"::);
 }
-
 
 
 using namespace std;
@@ -175,7 +179,7 @@ int main() {
 	float eventMs = 0.0f;
   
    
-   for(int mm=512; mm <=M; mm+=32)
+   for(int mm=512; mm <=M; mm+=256)
    {
           int n_off = ((NN / 4) + 31)  & 0xFFFFFFE0;
           hipLaunchKernelGGL(sgemv_t_c16x1_t1x4x1, 
@@ -202,9 +206,8 @@ int main() {
           double total_bytes = ( double)(mm)* (double)NN + double(mm) + double(NN);          
           total_bytes = total_bytes * sizeof(float) /1024/1024/1024;
 		  double gbps = total_bytes/eventMs * 1000 * 1;
-		  printf("sgemv_t_c64x1_t1x4x1 [mm=%d] ==> %lf Gi Bytes/s, ms: %f\n", mm, gbps, eventMs);
+		  printf("sgemv_t_c16x1_t1x4x1 [mm=%d] ==> %lf Gi Bytes/s, ms: %f\n", mm, gbps, eventMs);
    }
-
 
   HIP_ASSERT(hipMemcpy(hostC, deviceC, M*sizeof(float), hipMemcpyDeviceToHost));
 
